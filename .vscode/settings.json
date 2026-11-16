@@ -1,0 +1,9 @@
+{
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.lint": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  }
+}
