@@ -1,14 +1,33 @@
+import { useState } from 'react'
 import { useCart } from '../lib/cart'
 import { formatPrice } from '../lib/config'
-import { modifiersForCategory, type MenuItem } from '../lib/types'
+import { customizationsForDish, type MenuItem } from '../lib/types'
 import { FoodImage } from './FoodImage'
 import { MinusIcon, PlusIcon } from './Icons'
 
 export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; showCategory?: boolean }) {
   const { add, quantityOf, modifierOf, setQuantity, setModifier } = useCart()
   const qty = quantityOf(item.id)
-  const mod = modifierOf(item.id)
-  const modOptions = modifiersForCategory(item.category)
+  const cartMod = modifierOf(item.id)
+  const [draftParts, setDraftParts] = useState<string[]>([])
+
+  const groups = customizationsForDish(item)
+  const activeParts = qty > 0 ? (cartMod ? cartMod.split(', ').filter(Boolean) : []) : draftParts
+
+  const toggleOption = (groupOptions: string[], option: string) => {
+    // Allow 1 selection per customization group (e.g. 1 Swallow + 1 Spice level)
+    const withoutGroup = activeParts.filter((p) => !groupOptions.includes(p))
+    const nextParts = activeParts.includes(option) ? withoutGroup : [...withoutGroup, option]
+    const nextMod = nextParts.join(', ')
+    setDraftParts(nextParts)
+    if (qty > 0) {
+      setModifier(item.id, nextMod)
+    }
+  }
+
+  const handleAdd = () => {
+    add(item, draftParts.join(', '))
+  }
 
   return (
     <article className={`dish ${item.available ? '' : 'is-soldout'} ${qty > 0 ? 'is-in-cart' : ''}`}>
@@ -22,17 +41,24 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
         <h3 className="dish__name">{item.name}</h3>
         <p className="dish__desc">{item.description}</p>
 
-        {qty > 0 && item.available && (
-          <div className="dish__mods" aria-label={`Customize ${item.name}`}>
-            {modOptions.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={`dish__mod-pill ${mod === option ? 'is-active' : ''}`}
-                onClick={() => setModifier(item.id, option)}
-              >
-                {option}
-              </button>
+        {item.available && (
+          <div className="dish__mods-wrap" aria-label={`Customize ${item.name}`}>
+            {groups.map((g) => (
+              <div key={g.label} className="dish__mod-group">
+                <span className="dish__mod-label">{g.label}:</span>
+                <div className="dish__mods">
+                  {g.options.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`dish__mod-pill ${activeParts.includes(option) ? 'is-active' : ''}`}
+                      onClick={() => toggleOption(g.options, option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -44,7 +70,7 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
               Unavailable
             </button>
           ) : qty === 0 ? (
-            <button className="btn btn--primary btn--sm" onClick={() => add(item)}>
+            <button className="btn btn--primary btn--sm" onClick={handleAdd}>
               <PlusIcon size={16} /> Add
             </button>
           ) : (
@@ -53,7 +79,7 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
                 <MinusIcon size={16} />
               </button>
               <span>{qty}</span>
-              <button onClick={() => add(item)} aria-label="Increase">
+              <button onClick={handleAdd} aria-label="Increase">
                 <PlusIcon size={16} />
               </button>
             </div>

@@ -8,7 +8,7 @@ import { useCart } from '../lib/cart'
 import { formatPrice } from '../lib/config'
 import { formatTableLabel, saveLinkContext, syncLinkContextFromUrl } from '../lib/orderContext'
 import { placeOrder, verifyPayment, type CustomerDetails } from '../lib/orders'
-import { isPaystackConfigured, makeReference, payWithPaystack } from '../lib/paystack'
+import { isSquadConfigured, makeSquadReference, payWithSquad } from '../lib/squad'
 import { supabase } from '../lib/supabase'
 import {
   isTableOrder,
@@ -39,6 +39,24 @@ interface PlacedOrder {
   details: CustomerDetails
   splitShares?: SplitShare[]
 }
+
+const SPICE_LEVELS = [
+  { id: 'No Pepper', icon: '🌱', label: 'No Pepper', desc: 'Zero chilli' },
+  { id: 'Mild Spice', icon: '🌶️', label: 'Mild', desc: 'Gentle warmth' },
+  { id: 'Medium Spice', icon: '🌶️🌶️', label: 'Medium', desc: 'House standard' },
+  { id: 'Extra Spicy (Fiery)', icon: '🔥', label: 'Fiery', desc: 'Extra habanero' },
+] as const
+
+const COMMON_ALLERGIES = [
+  { id: 'Peanuts / Groundnut', icon: '🥜', label: 'Peanuts / Groundnut' },
+  { id: 'Shellfish / Crayfish', icon: '🦐', label: 'Shellfish / Crayfish' },
+  { id: 'Fish', icon: '🐟', label: 'Fish' },
+  { id: 'Dairy / Milk', icon: '🥛', label: 'Dairy / Milk' },
+  { id: 'Eggs', icon: '🥚', label: 'Eggs' },
+  { id: 'Tree Nuts', icon: '🌰', label: 'Tree Nuts' },
+  { id: 'Gluten / Wheat', icon: '🌾', label: 'Gluten / Wheat' },
+  { id: 'Soy', icon: '🫘', label: 'Soy' },
+] as const
 
 const PLACED_KEY = 'menu-app-placed-order'
 const NAME_KEY = 'menu-app-customer-name'
@@ -86,6 +104,8 @@ export function CheckoutPage() {
   const [customerName, setCustomerName] = useState(() => localStorage.getItem(NAME_KEY) ?? '')
   const [tableInput, setTableInput] = useState(linkCtx.tableCode ?? '1')
   const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [spiceLevel, setSpiceLevel] = useState<string>('Medium Spice')
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([])
   const [notes, setNotes] = useState('')
   const [tables, setTables] = useState<RestaurantTable[]>([])
 
@@ -172,10 +192,24 @@ export function CheckoutPage() {
 
   const activeTableCode = linkCtx.tableCode ?? tableInput.trim()
 
+  const toggleAllergy = (allergy: string) => {
+    setSelectedAllergies((prev) =>
+      prev.includes(allergy) ? prev.filter((a) => a !== allergy) : [...prev, allergy],
+    )
+  }
+
+  const structuredNotes = [
+    spiceLevel ? `Spice: ${spiceLevel}` : '',
+    selectedAllergies.length > 0 ? `ALLERGIES: ${selectedAllergies.join(', ')}` : 'Allergies: None',
+    notes.trim(),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   const baseDetails: CustomerDetails = {
     customer_name: customerName.trim(),
     address: isDelivery ? `Delivery: ${deliveryAddress.trim()}` : formatTableLabel(activeTableCode),
-    notes: notes.trim(),
+    notes: structuredNotes,
   }
 
   const submitDetails = (e: FormEvent) => {
@@ -198,19 +232,18 @@ export function CheckoutPage() {
 
   // -------- Payment --------
 
-  async function runPaystack(order: PlacedOrder) {
+  async function runSquad(order: PlacedOrder, existingRef?: string | null) {
     setStep('processing')
     setError(null)
-    const reference = makeReference(order.id)
+    const reference = existingRef || makeSquadReference(order.id)
     setLastReference(reference)
 
-    const result = await payWithPaystack({
-      email: `order-${order.id.slice(0, 8).toLowerCase()}@mamaput.kitchen`,
+    const result = await payWithSquad({
+      email: `order-${order.id.slice(0, 8).toLowerCase()}@creedlabs.kitchen`,
       amountNaira: order.total,
       reference,
       orderId: order.id,
       name: order.details.customer_name,
-      phone: '',
     })
 
     if (result.outcome === 'cancelled') {
@@ -228,7 +261,7 @@ export function CheckoutPage() {
     await confirmPayment(order, result.reference)
   }
 
-  async function payIndividualShareWithPaystack(shareIndex: number) {
+  async function payIndividualShareWithSquad(shareIndex: number) {
     if (!placed?.splitShares) return
     const share = placed.splitShares[shareIndex]
     if (!share || share.amount <= 0 || share.paidOnline) return
@@ -236,15 +269,14 @@ export function CheckoutPage() {
     setError(null)
     setPayingShareIdx(shareIndex)
     try {
-      const reference = `${makeReference(placed.id)}-P${shareIndex + 1}`
-      const result = await payWithPaystack({
-        email: `order-${placed.id.slice(0, 8).toLowerCase()}-p${shareIndex + 1}@mamaput.kitchen`,
+      const reference = `${makeSquadReference(placed.id)}-P${shareIndex + 1}`
+      const result = await payWithSquad({
+        email: `order-${placed.id.slice(0, 8).toLowerCase()}-p${shareIndex + 1}@creedlabs.kitchen`,
         amountNaira: share.amount,
         reference,
         orderId: placed.id,
         name: share.name,
-        phone: '',
-      })
+        })
 
       if (result.outcome === 'success') {
         const updatedShares = placed.splitShares.map((s, idx) =>
@@ -298,7 +330,7 @@ export function CheckoutPage() {
       const combinedNotes = [baseDetails.notes, splitSummary].filter(Boolean).join(' · ')
       const finalDetails: CustomerDetails = { ...baseDetails, notes: combinedNotes }
 
-      const { id, error: placeError } = await placeOrder(finalDetails, fresh.lines, method)
+      const { id, reference: initialRef, error: placeError } = await placeOrder(finalDetails, fresh.lines, method)
       if (placeError) {
         setError(placeError)
         return
@@ -317,7 +349,7 @@ export function CheckoutPage() {
       clear()
 
       if (method === 'cash') setStep('done')
-      else await runPaystack(order)
+      else await runSquad(order, initialRef)
     } finally {
       setBusy(null)
     }
@@ -448,18 +480,82 @@ export function CheckoutPage() {
               </label>
             )}
 
-            <label className="field">
-              <span>
-                Notes & allergies <small className="muted">(optional)</small>
-              </span>
-              <textarea
-                rows={3}
-                maxLength={500}
-                placeholder="Any allergies (nuts, dairy, shellfish), spice level, no onions, extra plantain…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
+            {/* Spice Level Selector */}
+            <div className="checkout-panel">
+              <div className="checkout-panel__head">
+                <strong>🌶️ Choose Spice Level</strong>
+                <small className="muted">How spicy should the kitchen make your order?</small>
+              </div>
+              <div className="spice-grid" role="radiogroup" aria-label="Spice level">
+                {SPICE_LEVELS.map((sp) => {
+                  const active = spiceLevel === sp.id
+                  return (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      className={`spice-btn ${active ? 'is-active' : ''}`}
+                      onClick={() => setSpiceLevel(sp.id)}
+                    >
+                      <span className="spice-btn__icon">{sp.icon}</span>
+                      <strong>{sp.label}</strong>
+                      <small>{sp.desc}</small>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Allergies Panel */}
+            <div className="checkout-panel checkout-panel--allergy">
+              <div className="checkout-panel__head">
+                <strong>⚠️ Allergies & Dietary Restrictions</strong>
+                <small className="muted">
+                  Tap any ingredient the kitchen must avoid for your table:
+                </small>
+              </div>
+              <div className="allergy-grid" role="group" aria-label="Common food allergies">
+                <button
+                  type="button"
+                  className={`allergy-chip ${selectedAllergies.length === 0 ? 'is-safe' : ''}`}
+                  onClick={() => setSelectedAllergies([])}
+                >
+                  ✓ No allergies
+                </button>
+                {COMMON_ALLERGIES.map((al) => {
+                  const active = selectedAllergies.includes(al.id)
+                  return (
+                    <button
+                      key={al.id}
+                      type="button"
+                      aria-pressed={active}
+                      className={`allergy-chip ${active ? 'is-active' : ''}`}
+                      onClick={() => toggleAllergy(al.id)}
+                    >
+                      <span>{al.icon}</span> {al.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedAllergies.length > 0 && (
+                <div className="allergy-alert">
+                  ⚠️ Kitchen alert: <strong>Avoid {selectedAllergies.join(', ')}</strong>
+                </div>
+              )}
+              <label className="field" style={{ marginTop: 6 }}>
+                <span>
+                  Other allergy or special instructions <small className="muted">(optional)</small>
+                </span>
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  placeholder="e.g. No onions, sauce on the side, extra plantain…"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </label>
+            </div>
 
             {error && <p className="alert alert--error">{error}</p>}
 
@@ -578,19 +674,23 @@ export function CheckoutPage() {
           <div className="pay-options">
             <button
               className="pay-option pay-option--primary"
-              onClick={() => choose('paystack')}
-              disabled={!!busy || !isPaystackConfigured()}
+              onClick={() => choose('squad')}
+              disabled={!!busy || !isSquadConfigured()}
             >
               <CardIcon size={28} />
               <span className="pay-option__text">
                 <strong>
-                  {busy === 'paystack'
+                  {busy === 'squad'
                     ? 'Placing order…'
                     : splitMode === 'single'
-                      ? 'Pay now with Paystack'
-                      : 'Pay full bill now with Paystack'}
+                      ? 'Pay now with Squad'
+                      : 'Pay with Squad (Online)'}
                 </strong>
-                <small>Card, bank transfer or USSD — instant confirmation</small>
+                <small>
+                  {isDelivery
+                    ? 'Pay online now with Squad (Card, Bank Transfer or USSD) for delivery'
+                    : 'Pay online now with Squad (Card, Bank Transfer or USSD) at your table'}
+                </small>
               </span>
             </button>
             <button className="pay-option" onClick={() => choose('cash')} disabled={!!busy}>
@@ -600,24 +700,26 @@ export function CheckoutPage() {
                   {busy === 'cash'
                     ? 'Placing order…'
                     : splitMode !== 'single'
-                      ? `Place split order (${payerCount} people pay their share)`
+                      ? isDelivery
+                        ? `Split bill (${payerCount} people — Squad or Pay on delivery)`
+                        : `Split bill (${payerCount} people — Squad or Pay at table)`
                       : isDelivery
-                        ? 'Pay on delivery'
-                        : 'Pay at the table'}
+                        ? 'Pay on delivery (or later)'
+                        : 'Pay at the table (Cash / POS / Transfer)'}
                 </strong>
                 <small>
                   {splitMode !== 'single'
-                    ? 'Each person can pay their share via Paystack, POS card, cash or transfer'
+                    ? 'Each person can pay their share online with Squad or when served/delivered'
                     : isDelivery
-                      ? 'Pay with cash, POS or transfer when your order arrives'
-                      : 'Pay with cash, POS card or transfer right at your table'}
+                      ? 'Pay with cash, POS card or bank transfer when your delivery arrives'
+                      : 'Pay with cash, POS card or bank transfer right at your table'}
                 </small>
               </span>
             </button>
           </div>
 
-          {!isPaystackConfigured() && (
-            <p className="alert alert--info">Online payment is not configured yet (missing VITE_PAYSTACK_PUBLIC_KEY).</p>
+          {!isSquadConfigured() && (
+            <p className="alert alert--info">Online payment is not configured yet (missing VITE_SQUAD_PUBLIC_KEY).</p>
           )}
           {error && <p className="alert alert--error">{error}</p>}
 
@@ -629,7 +731,7 @@ export function CheckoutPage() {
         <section className="card center">
           <div className="spinner spinner--lg" />
           <h2>Processing payment…</h2>
-          <p className="muted">Complete the payment in the Paystack window. Please don't close this page.</p>
+          <p className="muted">Complete the payment in the Squad window. Please don't close this page.</p>
         </section>
       )}
 
@@ -651,8 +753,8 @@ export function CheckoutPage() {
                 I've paid — check again
               </button>
             )}
-            <button className="btn btn--primary btn--lg btn--block" onClick={() => runPaystack(placed)}>
-              Retry payment with Paystack
+            <button className="btn btn--primary btn--lg btn--block" onClick={() => runSquad(placed)}>
+              Retry payment with Squad
             </button>
             <button className="btn btn--text btn--block" onClick={finish}>
               Back to menu
@@ -701,7 +803,7 @@ export function CheckoutPage() {
             <div className="split-done-box">
               <h3>👥 Group Split Breakdown ({placed.splitShares.length} people)</h3>
               <p className="muted small">
-                Each person can pay their share below with Paystack or settle at the table with POS / transfer / cash.
+                Each person can pay their share below with Squad or settle at the table with POS / transfer / cash.
               </p>
               <div className="split-done-list">
                 {placed.splitShares.map((s, idx) => (
@@ -714,17 +816,17 @@ export function CheckoutPage() {
                       <strong>{formatPrice(s.amount)}</strong>
                       {s.paidOnline || placed.paid ? (
                         <span className="badge badge--paid">Paid</span>
-                      ) : isPaystackConfigured() && s.amount > 0 ? (
+                      ) : isSquadConfigured() && s.amount > 0 ? (
                         <button
                           type="button"
                           className="btn btn--primary btn--xs"
                           disabled={payingShareIdx !== null}
-                          onClick={() => payIndividualShareWithPaystack(idx)}
+                          onClick={() => payIndividualShareWithSquad(idx)}
                         >
-                          {payingShareIdx === idx ? 'Opening…' : 'Pay share online'}
+                          {payingShareIdx === idx ? 'Opening…' : 'Pay share with Squad'}
                         </button>
                       ) : (
-                        <span className="badge badge--cash">Pay at table</span>
+                        <span className="badge badge--cash">{isDelivery ? "Pay on delivery" : "Pay at table"}</span>
                       )}
                     </div>
                   </div>

@@ -140,7 +140,8 @@
   padding: 0 20px;
   border: none;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--dark-bar-bg);
+  border: 1.5px solid var(--line);
   color: #fff;
   font-weight: 700;
   box-shadow: var(--shadow-lg);

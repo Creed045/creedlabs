@@ -543,3 +543,117 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* ---------- Spice Level & Allergies Panels ---------- */
+
+.checkout-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+  border: 1.5px solid var(--line);
+}
+
+.checkout-panel__head {
+  display: grid;
+  gap: 2px;
+}
+
+.checkout-panel__head strong {
+  font-size: 0.96rem;
+}
+
+.spice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+@media (min-width: 520px) {
+  .spice-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.spice-btn {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  transition: all 0.14s;
+}
+
+.spice-btn:hover {
+  border-color: var(--brand);
+}
+
+.spice-btn.is-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: 0 0 0 2px rgb(228 87 46 / 0.18);
+}
+
+.spice-btn__icon {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.spice-btn strong {
+  font-size: 0.85rem;
+}
+
+.spice-btn small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.allergy-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.allergy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.14s;
+}
+
+.allergy-chip:hover {
+  border-color: var(--brand);
+}
+
+.allergy-chip.is-safe {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.allergy-chip.is-active {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.allergy-alert {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: 0.86rem;
+}

@@ -22,10 +22,11 @@ import {
   type RestaurantTable,
 } from '../lib/types'
 import { useMenu } from '../lib/useMenu'
+import { useAuth } from '../lib/auth'
 import { useCallWaiterSetting, useLiveWaiterCalls } from '../lib/waiter'
 import { playChime, vibrate } from '../lib/alert'
 
-type Tab = 'orders' | 'menu' | 'links'
+type Tab = 'orders' | 'menu' | 'links' | 'staff'
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('orders')
@@ -47,9 +48,20 @@ export function AdminPage() {
         <button className={tab === 'links' ? 'is-active' : ''} onClick={() => setTab('links')}>
           Table & Delivery Links
         </button>
+        <button className={tab === 'staff' ? 'is-active' : ''} onClick={() => setTab('staff')}>
+          Staff & Password
+        </button>
       </div>
       <main className="staff-main">
-        {tab === 'orders' ? <OrdersPanel /> : tab === 'menu' ? <MenuPanel /> : <LinksPanel />}
+        {tab === 'orders' ? (
+          <OrdersPanel />
+        ) : tab === 'menu' ? (
+          <MenuPanel />
+        ) : tab === 'links' ? (
+          <LinksPanel />
+        ) : (
+          <StaffSettingsPanel />
+        )}
       </main>
     </div>
   )
@@ -659,6 +671,399 @@ function LinksPanel() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Staff Account Creation & Admin Email / Password Settings
+// ---------------------------------------------------------------------------
+
+interface StaffMember {
+  id: string
+  email: string
+  role: 'admin' | 'kitchen'
+  created_at: string
+}
+
+function StaffSettingsPanel() {
+  const { session } = useAuth()
+  const currentUserId = session?.user.id
+
+  // 1. Change own email & password state
+  const [myEmail, setMyEmail] = useState(session?.user.email ?? '')
+  const [myPassword, setMyPassword] = useState('')
+  const [myPasswordConfirm, setMyPasswordConfirm] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  // 2. Staff list & create new staff account state
+  const [staffList, setStaffList] = useState<StaffMember[]>([])
+  const [loadingStaff, setLoadingStaff] = useState(true)
+  const [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newRole, setNewRole] = useState<'kitchen' | 'admin'>('kitchen')
+  const [createBusy, setCreateBusy] = useState(false)
+  const [staffMsg, setStaffMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  // 3. Edit any staff member's email & password modal
+  const [editTarget, setEditTarget] = useState<StaffMember | null>(null)
+  const [editEmailVal, setEditEmailVal] = useState('')
+  const [editPasswordVal, setEditPasswordVal] = useState('')
+  const [editBusy, setEditBusy] = useState(false)
+
+  const loadStaff = async () => {
+    setLoadingStaff(true)
+    const { data, error } = await supabase.rpc('admin_list_staff')
+    if (!error && data) {
+      setStaffList(data as StaffMember[])
+    }
+    setLoadingStaff(false)
+  }
+
+  useEffect(() => {
+    let active = true
+    supabase.rpc('admin_list_staff').then(({ data, error }) => {
+      if (!active) return
+      if (!error && data) {
+        const list = data as StaffMember[]
+        setStaffList(list)
+        const me = list.find((m) => m.id === currentUserId)
+        if (me) setMyEmail(me.email)
+      }
+      setLoadingStaff(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [currentUserId])
+
+  const handleUpdateMyAccount = async (e: FormEvent) => {
+    e.preventDefault()
+    setPwMsg(null)
+    if (!currentUserId) return
+
+    const cleanEmail = myEmail.trim().toLowerCase()
+    if (!cleanEmail) {
+      return setPwMsg({ type: 'err', text: 'Email cannot be empty.' })
+    }
+    if (myPassword && myPassword.length < 6) {
+      return setPwMsg({ type: 'err', text: 'New password must be at least 6 characters.' })
+    }
+    if (myPassword !== myPasswordConfirm) {
+      return setPwMsg({ type: 'err', text: 'Passwords do not match.' })
+    }
+
+    setPwBusy(true)
+    const { error } = await supabase.rpc('admin_update_staff', {
+      p_user_id: currentUserId,
+      p_new_role: null,
+      p_new_password: myPassword || null,
+      p_new_email: cleanEmail,
+    })
+    if (!error) {
+      await supabase.auth.refreshSession()
+    }
+    setPwBusy(false)
+
+    if (error) {
+      setPwMsg({ type: 'err', text: error.message })
+    } else {
+      setMyPassword('')
+      setMyPasswordConfirm('')
+      setPwMsg({ type: 'ok', text: 'Your admin login details have been updated!' })
+      loadStaff()
+    }
+  }
+
+  const handleCreateStaff = async (e: FormEvent) => {
+    e.preventDefault()
+    setStaffMsg(null)
+    if (newPassword.length < 6) {
+      return setStaffMsg({ type: 'err', text: 'Password must be at least 6 characters.' })
+    }
+
+    setCreateBusy(true)
+    const { error } = await supabase.rpc('admin_create_staff', {
+      p_email: newEmail.trim(),
+      p_password: newPassword,
+      p_role: newRole,
+    })
+    setCreateBusy(false)
+
+    if (error) {
+      setStaffMsg({ type: 'err', text: error.message })
+    } else {
+      setStaffMsg({
+        type: 'ok',
+        text: `Created ${newRole} account for ${newEmail.trim()}! They can now log in at /staff.`,
+      })
+      setNewEmail('')
+      setNewPassword('')
+      loadStaff()
+    }
+  }
+
+  const handleRoleChange = async (member: StaffMember, nextRole: 'admin' | 'kitchen') => {
+    setStaffMsg(null)
+    const { error } = await supabase.rpc('admin_update_staff', {
+      p_user_id: member.id,
+      p_new_role: nextRole,
+      p_new_password: null,
+      p_new_email: null,
+    })
+    if (error) {
+      setStaffMsg({ type: 'err', text: error.message })
+    } else {
+      setStaffList((prev) => prev.map((m) => (m.id === member.id ? { ...m, role: nextRole } : m)))
+      setStaffMsg({ type: 'ok', text: `Updated ${member.email} role to ${nextRole}.` })
+    }
+  }
+
+  const handleSaveStaffEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editTarget) return
+    const cleanEmail = editEmailVal.trim().toLowerCase()
+    if (!cleanEmail) {
+      return setStaffMsg({ type: 'err', text: 'Email cannot be empty.' })
+    }
+    if (editPasswordVal && editPasswordVal.length < 6) {
+      return setStaffMsg({ type: 'err', text: 'New password must be at least 6 characters.' })
+    }
+
+    setEditBusy(true)
+    const { error } = await supabase.rpc('admin_update_staff', {
+      p_user_id: editTarget.id,
+      p_new_role: null,
+      p_new_password: editPasswordVal || null,
+      p_new_email: cleanEmail,
+    })
+    setEditBusy(false)
+    if (error) {
+      setStaffMsg({ type: 'err', text: error.message })
+    } else {
+      setStaffMsg({ type: 'ok', text: `Updated login details for ${cleanEmail}!` })
+      if (editTarget.id === currentUserId) {
+        setMyEmail(cleanEmail)
+        await supabase.auth.refreshSession()
+      }
+      setEditTarget(null)
+      setEditPasswordVal('')
+      loadStaff()
+    }
+  }
+
+  return (
+    <section className="staff-settings-grid">
+      {/* 1. Change My Email & Password */}
+      <div className="card">
+        <h2>🔒 My Admin Login (Email & Password)</h2>
+        <p className="muted small" style={{ marginTop: 4, marginBottom: 16 }}>
+          Change your admin email address or update your password below.
+        </p>
+
+        <form className="form" onSubmit={handleUpdateMyAccount}>
+          <label className="field">
+            <span>My admin email</span>
+            <input
+              type="email"
+              required
+              value={myEmail}
+              onChange={(e) => setMyEmail(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>
+              New password <small className="muted">(leave blank to keep current password)</small>
+            </span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              placeholder="At least 6 characters"
+              value={myPassword}
+              onChange={(e) => setMyPassword(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Confirm new password</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              placeholder="Repeat new password"
+              value={myPasswordConfirm}
+              onChange={(e) => setMyPasswordConfirm(e.target.value)}
+            />
+          </label>
+
+          {pwMsg && (
+            <p className={`alert ${pwMsg.type === 'ok' ? 'alert--info' : 'alert--error'}`}>
+              {pwMsg.type === 'ok' ? `✓ ${pwMsg.text}` : pwMsg.text}
+            </p>
+          )}
+
+          <button type="submit" className="btn btn--primary" disabled={pwBusy}>
+            {pwBusy ? 'Saving…' : 'Save my login details'}
+          </button>
+        </form>
+      </div>
+
+      {/* 2. Create New Staff Account */}
+      <div className="card">
+        <h2>👤 Create Staff Account</h2>
+        <p className="muted small" style={{ marginTop: 4, marginBottom: 16 }}>
+          Create login accounts for kitchen staff (`/kitchen`) or additional managers (`/admin`).
+        </p>
+
+        <form className="form" onSubmit={handleCreateStaff}>
+          <label className="field">
+            <span>Staff email</span>
+            <input
+              type="email"
+              required
+              placeholder="e.g. chef2@mamaput.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+          </label>
+
+          <div className="field-row">
+            <label className="field">
+              <span>Initial password</span>
+              <input
+                type="text"
+                required
+                minLength={6}
+                placeholder="Min 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span>Role</span>
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value as 'kitchen' | 'admin')}>
+                <option value="kitchen">Kitchen Staff (/kitchen)</option>
+                <option value="admin">Admin (/admin)</option>
+              </select>
+            </label>
+          </div>
+
+          {staffMsg && (
+            <p className={`alert ${staffMsg.type === 'ok' ? 'alert--info' : 'alert--error'}`}>
+              {staffMsg.type === 'ok' ? `✓ ${staffMsg.text}` : staffMsg.text}
+            </p>
+          )}
+
+          <button type="submit" className="btn btn--primary" disabled={createBusy}>
+            <PlusIcon size={18} /> {createBusy ? 'Creating account…' : 'Create staff account'}
+          </button>
+        </form>
+      </div>
+
+      {/* 3. Existing Staff Accounts Directory */}
+      <div className="card staff-settings-grid__full">
+        <div className="panel-toolbar" style={{ marginBottom: 12 }}>
+          <div>
+            <h2>👥 Staff Accounts ({staffList.length})</h2>
+            <p className="muted small">
+              Change the email address, password, or role for any Admin or Kitchen account.
+            </p>
+          </div>
+        </div>
+
+        {loadingStaff ? (
+          <div className="skeleton" style={{ height: 120 }} />
+        ) : (
+          <div className="staff-directory">
+            {staffList.map((member) => {
+              const isMe = member.id === currentUserId
+              return (
+                <div key={member.id} className="staff-row">
+                  <div className="staff-row__info">
+                    <strong>
+                      {member.email} {isMe && <span className="badge badge--paid">You</span>}
+                    </strong>
+                    <small className="muted">
+                      Accesses {member.role === 'admin' ? '/admin and /kitchen' : '/kitchen only'}
+                    </small>
+                  </div>
+
+                  <div className="staff-row__actions">
+                    <select
+                      className="staff-role-select"
+                      value={member.role}
+                      disabled={isMe}
+                      aria-label={`Role for ${member.email}`}
+                      onChange={(e) => handleRoleChange(member, e.target.value as 'admin' | 'kitchen')}
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="kitchen">Kitchen</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => {
+                        setEditTarget(member)
+                        setEditEmailVal(member.email)
+                        setEditPasswordVal('')
+                      }}
+                    >
+                      Edit email / password
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {editTarget && (
+        <div className="modal-overlay" onClick={() => setEditTarget(null)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2>Edit {editTarget.role} account</h2>
+              <button className="icon-btn" onClick={() => setEditTarget(null)} aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <form className="form modal__body" onSubmit={handleSaveStaffEdit}>
+              <label className="field">
+                <span>Email address</span>
+                <input
+                  type="email"
+                  required
+                  value={editEmailVal}
+                  onChange={(e) => setEditEmailVal(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>
+                  New password <small className="muted">(leave blank to keep current password)</small>
+                </span>
+                <input
+                  type="text"
+                  minLength={6}
+                  placeholder="Enter new password (min 6 chars)"
+                  value={editPasswordVal}
+                  onChange={(e) => setEditPasswordVal(e.target.value)}
+                />
+              </label>
+              <div className="modal__footer">
+                <button type="button" className="btn btn--ghost" onClick={() => setEditTarget(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn--primary" disabled={editBusy}>
+                  {editBusy ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

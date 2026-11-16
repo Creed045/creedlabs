@@ -32,7 +32,7 @@ create table if not exists public.orders (
   total             numeric(10,2) not null default 0,  -- always recalculated by trigger
   status            text not null default 'new'
                       check (status in ('new', 'preparing', 'ready', 'delivered')),
-  payment_method    text not null check (payment_method in ('paystack', 'cash')),
+  payment_method    text not null check (payment_method in ('squad', 'cash')),
   payment_status    text not null default 'pending'
                       check (payment_status in ('pending', 'paid', 'failed')),
   payment_reference text unique,
@@ -142,9 +142,9 @@ grant select on public.profiles to authenticated;
 --    payment_reference are NOT insertable â€” the trigger sets them)
 --  * staff may SELECT and UPDATE only the "status" column.
 --  * payment_status / payment_reference can only be changed by the
---    service_role, i.e. the verify-payment Edge Function.
+--    service_role, i.e. the squad-verify / squad-webhook Edge Function.
 revoke all on public.orders from anon, authenticated;
-grant insert (id, customer_name, phone, email, address, notes, items, payment_method)
+grant insert (id, customer_name, phone, email, address, notes, items, payment_method, payment_reference)
   on public.orders to anon, authenticated;
 grant select on public.orders to authenticated;
 grant update (status) on public.orders to authenticated;
@@ -203,7 +203,7 @@ drop policy if exists "Staff can update orders"     on public.orders;
 create policy "Anyone can place an order"
   on public.orders for insert
   to anon, authenticated
-  with check (status = 'new' and payment_status = 'pending' and payment_reference is null);
+  with check (status = 'new' and payment_status = 'pending');
 
 create policy "Staff can read orders"
   on public.orders for select
@@ -498,10 +498,10 @@ select * from (values
    'Juicy marinated turkey wings slow-grilled and glazed in smoky peppered sauce.',
    4000.00, 'Proteins', '/images/turkey.jpg', true, true),
   ('Crispy Fried Croaker Fish',
-   'Seasoned croaker fish steaks fried golden and topped with sautéed peppers and onions.',
+   'Seasoned croaker fish steaks fried golden and topped with sautï¿½ed peppers and onions.',
    5000.00, 'Proteins', '/images/fish.jpg', true, false),
   ('Peppered Giant Snails',
-   'Tender giant snails sautéed in rich ata-rodo pepper sauce with crunchy onion rings.',
+   'Tender giant snails sautï¿½ed in rich ata-rodo pepper sauce with crunchy onion rings.',
    5500.00, 'Proteins', '/images/snail.jpg', true, false),
   ('Creamy Tigernut Drink (Kunu Aya)',
    'Chilled velvety blend of tigernuts, sweet dates, coconut and fresh ginger.',
@@ -638,3 +638,161 @@ create policy "Staff can delete waiter calls"
   to authenticated
   using (exists (select 1 from public.profiles p
                  where p.id = (select auth.uid()) and p.role in ('admin', 'kitchen')));
+
+-- ---------------------------------------------------------------------
+-- 12. ADMIN STAFF MANAGEMENT & PASSWORD RESET RPCS
+-- ---------------------------------------------------------------------
+
+create or replace function public.admin_list_staff()
+returns table (
+  id         uuid,
+  email      text,
+  role       text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1 from public.profiles p
+     where p.id = (select auth.uid()) and p.role = 'admin'
+  ) then
+    raise exception 'Access denied: only admins can view staff accounts';
+  end if;
+
+  return query
+    select p.id, coalesce(u.email::text, ''), p.role, p.created_at
+      from public.profiles p
+      join auth.users u on u.id = p.id
+     order by p.created_at asc;
+end;
+$$;
+
+create or replace function public.admin_create_staff(
+  p_email    text,
+  p_password text,
+  p_role     text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  clean_email text := lower(btrim(p_email));
+  new_uid     uuid;
+begin
+  if not exists (
+    select 1 from public.profiles p
+     where p.id = (select auth.uid()) and p.role = 'admin'
+  ) then
+    raise exception 'Access denied: only admins can create staff accounts';
+  end if;
+
+  if clean_email !~* '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'Please enter a valid email address';
+  end if;
+
+  if char_length(coalesce(p_password, '')) < 6 then
+    raise exception 'Password must be at least 6 characters';
+  end if;
+
+  if p_role not in ('admin', 'kitchen') then
+    raise exception 'Role must be admin or kitchen';
+  end if;
+
+  select u.id into new_uid from auth.users u where lower(u.email) = clean_email limit 1;
+
+  if new_uid is not null then
+    raise exception 'An account with email % already exists', clean_email;
+  end if;
+
+  new_uid := gen_random_uuid();
+
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at,
+    confirmation_token, email_change, email_change_token_new, recovery_token
+  ) values (
+    '00000000-0000-0000-0000-000000000000',
+    new_uid,
+    'authenticated',
+    'authenticated',
+    clean_email,
+    extensions.crypt(p_password, extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    '', '', '', ''
+  );
+
+  insert into auth.identities (
+    id, user_id, provider_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) values (
+    gen_random_uuid(),
+    new_uid,
+    new_uid::text,
+    jsonb_build_object('sub', new_uid::text, 'email', clean_email, 'email_verified', true),
+    'email',
+    now(),
+    now(),
+    now()
+  );
+
+  insert into public.profiles (id, role)
+  values (new_uid, p_role);
+
+  return new_uid;
+end;
+$$;
+
+create or replace function public.admin_update_staff(
+  p_user_id      uuid,
+  p_new_role     text default null,
+  p_new_password text default null,
+  p_new_email    text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1 from public.profiles p
+     where p.id = (select auth.uid()) and p.role = 'admin'
+  ) then
+    raise exception 'Access denied: only admins can update staff accounts';
+  end if;
+
+  if p_new_role is not null then
+    if p_new_role not in ('admin', 'kitchen') then
+      raise exception 'Role must be admin or kitchen';
+    end if;
+    if p_user_id = (select auth.uid()) and p_new_role <> 'admin' then
+      raise exception 'You cannot remove your own admin role';
+    end if;
+    update public.profiles set role = p_new_role where id = p_user_id;
+  end if;
+
+  if p_new_password is not null and btrim(p_new_password) <> '' then
+    if char_length(p_new_password) < 6 then
+      raise exception 'Password must be at least 6 characters';
+    end if;
+    update auth.users
+       set encrypted_password = extensions.crypt(p_new_password, extensions.gen_salt('bf')),
+           updated_at = now()
+     where id = p_user_id;
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_list_staff() to authenticated;
+grant execute on function public.admin_create_staff(text, text, text) to authenticated;
+grant execute on function public.admin_update_staff(uuid, text, text, text) to authenticated;

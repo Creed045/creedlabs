@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { makeSquadReference } from './squad'
 import { supabase } from './supabase'
 import type { CartLine, Order, OrderStatus, PaymentMethod } from './types'
 
@@ -7,14 +8,10 @@ export interface CustomerDetails {
   customer_name: string
   /** Either "Table 4" (from NFC/table link) or a delivery street address. */
   address: string
-  /** Customer notes and allergies. */
+  /** Customer notes, spice level, and allergies. */
   notes: string
 }
 
-/**
- * Places an order as an anonymous customer.
- * Phone and email are not required from the customer; the DB trigger fills safe defaults.
- */
 function generateUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -25,23 +22,39 @@ function generateUuid(): string {
     return v.toString(16)
   })
 }
+
+/**
+ * Places an order as an anonymous customer.
+ * For Squad payments, creates the order as payment_status = 'pending' with a
+ * unique transaction reference before opening the Squad inline modal.
+ */
 export async function placeOrder(
   details: CustomerDetails,
   lines: CartLine[],
   paymentMethod: PaymentMethod,
-): Promise<{ id: string; error: string | null }> {
+): Promise<{ id: string; reference: string | null; email: string; error: string | null }> {
   const id = generateUuid()
+  const reference = paymentMethod === 'squad' ? makeSquadReference(id) : null
+  const email = `order-${id.slice(0, 8).toLowerCase()}@creedlabs.kitchen`
+
   const { error } = await supabase.from('orders').insert({
     id,
     customer_name: details.customer_name,
     phone: 'N/A  ',
-    email: `order-${id.slice(0, 8).toLowerCase()}@mamaput.kitchen`,
+    email,
     address: details.address,
     notes: details.notes,
-    items: lines.map((l) => ({ id: l.id, name: l.name, price: l.price, quantity: l.quantity, modifier: l.modifier ?? '' })),
+    items: lines.map((l) => ({
+      id: l.id,
+      name: l.name,
+      price: l.price,
+      quantity: l.quantity,
+      modifier: l.modifier ?? '',
+    })),
     payment_method: paymentMethod,
+    payment_reference: reference,
   })
-  return { id, error: error ? friendlyDbError(error.message) : null }
+  return { id, reference, email, error: error ? friendlyDbError(error.message) : null }
 }
 
 function friendlyDbError(message: string): string {
@@ -49,12 +62,12 @@ function friendlyDbError(message: string): string {
   return `We couldn't place your order: ${message}`
 }
 
-/** Asks the verify-payment Edge Function to confirm the Paystack payment. */
+/** Calls the squad-verify Edge Function to verify the Squad payment server-side. */
 export async function verifyPayment(
   orderId: string,
   reference: string,
 ): Promise<{ ok: boolean; error: string | null }> {
-  const { data, error } = await supabase.functions.invoke('verify-payment', {
+  const { data, error } = await supabase.functions.invoke('squad-verify', {
     body: { order_id: orderId, reference },
   })
   if (error) {

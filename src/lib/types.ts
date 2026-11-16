@@ -19,6 +19,7 @@ export interface CartLine {
   id: string
   name: string
   price: number
+  category?: Category
   image_url: string | null
   quantity: number
   modifier?: string
@@ -33,7 +34,7 @@ export interface OrderItem {
 }
 
 export type OrderStatus = 'new' | 'preparing' | 'ready' | 'delivered'
-export type PaymentMethod = 'paystack' | 'cash'
+export type PaymentMethod = 'squad' | 'cash'
 export type PaymentStatus = 'pending' | 'paid' | 'failed'
 
 export interface Order {
@@ -76,8 +77,30 @@ export function isTableOrder(address: string): boolean {
   return /^table\b/i.test(address.trim())
 }
 
-export function modifiersForCategory(category: Category): string[] {
-  if (category === 'Drinks') return ['Chilled', '🧊 Extra Ice', 'No Ice']
-  if (category === 'Desserts') return ['Warm', 'Extra Honey']
-  return ['Mild', 'Medium', '🌶️ Extra Spicy']
+export interface DishCustomizationGroup {
+  label: string
+  options: string[]
+}
+
+export function customizationsForDish(item: Pick<MenuItem, 'name' | 'category'>): DishCustomizationGroup[] {
+  const lower = item.name.toLowerCase()
+  if (item.category === 'Drinks') {
+    return [
+      { label: 'Ice & Temp', options: ['🧊 Extra Ice', 'Chilled', 'No Ice'] },
+    ]
+  }
+  if (item.category === 'Desserts') {
+    return [
+      { label: 'Preference', options: ['Served Warm', 'Extra Honey / Drizzle'] },
+    ]
+  }
+  if (lower.includes('egusi') || lower.includes('soup')) {
+    return [
+      { label: 'Swallow', options: ['Pounded Yam', 'Eba', 'Amala', 'Semovita'] },
+      { label: 'Spice', options: ['Mild', 'Medium', '🌶️ Fiery'] },
+    ]
+  }
+  return [
+    { label: 'Spice & Prep', options: ['Mild', 'Medium', '🌶️ Fiery', 'No Onions'] },
+  ]
 }

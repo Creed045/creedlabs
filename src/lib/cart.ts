@@ -8,7 +8,7 @@ export interface CartContextValue {
   isOpen: boolean
   openCart: () => void
   closeCart: () => void
-  add: (item: MenuItem) => void
+  add: (item: MenuItem, initialModifier?: string) => void
   setQuantity: (id: string, quantity: number) => void
   setModifier: (id: string, modifier: string) => void
   remove: (id: string) => void

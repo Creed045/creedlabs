@@ -22,17 +22,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
   }, [lines])
 
-  const add = useCallback((item: MenuItem) => {
+  const add = useCallback((item: MenuItem, initialModifier?: string) => {
     setLines((prev) => {
       const existing = prev.find((l) => l.id === item.id)
       if (existing) {
         return prev.map((l) =>
-          l.id === item.id ? { ...l, quantity: Math.min(l.quantity + 1, 50) } : l,
+          l.id === item.id
+            ? {
+                ...l,
+                quantity: Math.min(l.quantity + 1, 50),
+                modifier: initialModifier !== undefined ? initialModifier : l.modifier,
+              }
+            : l,
         )
       }
       return [
         ...prev,
-        { id: item.id, name: item.name, price: Number(item.price), image_url: item.image_url, quantity: 1, modifier: '' },
+        {
+          id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          category: item.category,
+          image_url: item.image_url,
+          quantity: 1,
+          modifier: initialModifier ?? '',
+        },
       ]
     })
   }, [])
@@ -46,9 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setModifier = useCallback((id: string, modifier: string) => {
-    setLines((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, modifier: l.modifier === modifier ? '' : modifier } : l)),
-    )
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, modifier } : l)))
   }, [])
 
   const remove = useCallback((id: string) => {
