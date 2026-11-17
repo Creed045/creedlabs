@@ -61,10 +61,7 @@ Deno.serve(async (req) => {
   const squadKeyName = envKeys.find(
     (k) => k.toLowerCase() === 'squad_secret_key' || k.toLowerCase().includes('squad_secret'),
   )
-  const squadSecret = squadKeyName ? Deno.env.get(squadKeyName)?.trim() : undefined
-  if (!squadSecret) {
-    return json({ ok: false, error: 'Server is missing SQUAD_SECRET_KEY secret' }, 500)
-  }
+  let squadSecret = squadKeyName ? Deno.env.get(squadKeyName)?.trim() : undefined
 
   let reference: string, orderId: string
   try {
@@ -82,6 +79,20 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, getAdminKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+
+  // Fallback: If not in environment variables, check secure app_secrets table in DB
+  if (!squadSecret) {
+    const { data: dbSec } = await admin
+      .from('app_secrets')
+      .select('value')
+      .eq('key', 'squad_secret_key')
+      .maybeSingle()
+    if (dbSec?.value) squadSecret = dbSec.value.trim()
+  }
+
+  if (!squadSecret) {
+    return json({ ok: false, error: 'Server is missing SQUAD_SECRET_KEY secret' }, 500)
+  }
 
   // 1. Load the order from the database (source of truth for the total amount).
   const { data: order, error: orderError } = await admin
