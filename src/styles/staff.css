@@ -426,6 +426,35 @@
   padding: 16px;
   border-radius: var(--radius);
   background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.ticket--failed-payment {
+  border: 2px solid var(--bad) !important;
+}
+
+.ticket__alert-banner {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticket__alert-banner--failed {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border: 1px solid var(--bad);
+}
+
+.btn--go-preparing-warn {
+  background: var(--bad) !important;
+  color: #fff !important;
+}
+.btn--go-preparing-warn:hover {
+  filter: brightness(0.9);
 }
 
 .ticket__head {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FoodImage } from '../components/FoodImage'
-import { BellIcon } from '../components/Icons'
+import { BellIcon, CloseIcon } from '../components/Icons'
 import { LiveDot } from '../components/LiveDot'
 import { PaymentBadge } from '../components/PaymentBadge'
 import { StaffHeader } from '../components/StaffHeader'
@@ -28,6 +28,11 @@ export function KitchenPage() {
   const [soundOn, setSoundOn] = useState(false)
   const [alertCount, setAlertCount] = useState(0)
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
+  const [warnOrder, setWarnOrder] = useState<{
+    order: Order
+    status: OrderStatus
+    type: 'failed' | 'pending'
+  } | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [, setTick] = useState(0)
 
@@ -66,6 +71,21 @@ export function KitchenPage() {
   }
 
   const move = async (order: Order, status: OrderStatus) => {
+    // Show a prominent confirmation warning if kitchen wants to start preparing an order with failed or unconfirmed payment
+    if (status === 'preparing') {
+      if (order.payment_status === 'failed') {
+        setWarnOrder({ order, status, type: 'failed' })
+        return
+      }
+      if (order.payment_method === 'squad' && order.payment_status === 'pending') {
+        setWarnOrder({ order, status, type: 'pending' })
+        return
+      }
+    }
+    proceedMove(order, status)
+  }
+
+  const proceedMove = async (order: Order, status: OrderStatus) => {
     setErr(null)
     setFreshIds((s) => {
       const n = new Set(s)
@@ -172,12 +192,18 @@ export function KitchenPage() {
                   ) : (
                     list.map((o) => {
                       const tableOrder = isTableOrder(o.address)
+                      const isFailedPayment = o.payment_status === 'failed'
                       return (
-                        <article key={o.id} className={`ticket ${freshIds.has(o.id) ? 'is-fresh' : ''}`}>
+                        <article key={o.id} className={`ticket ${freshIds.has(o.id) ? 'is-fresh' : ''} ${isFailedPayment ? 'ticket--failed-payment' : ''}`}>
                           <div className="ticket__head">
                             <strong className="ticket__id">#{shortOrderId(o.id)}</strong>
                             <span className="ticket__time">{timeAgo(o.created_at)}</span>
                           </div>
+                          {isFailedPayment && (
+                            <div className="ticket__alert-banner ticket__alert-banner--failed">
+                              ⚠️ <strong>PAYMENT FAILED</strong> — Confirm before preparing!
+                            </div>
+                          )}
                           <div className="ticket__badges">
                             <span className={`order-card__place ${tableOrder ? 'is-table' : 'is-delivery'}`}>
                               {tableOrder ? `🍽️ ${o.address}` : `🛵 ${o.address}`}
@@ -206,8 +232,13 @@ export function KitchenPage() {
                               </button>
                             )}
                             {col.next && (
-                              <button className={`btn btn--xl btn--block btn--go-${col.next}`} onClick={() => move(o, col.next!)}>
-                                {col.nextLabel}
+                              <button
+                                className={`btn btn--xl btn--block btn--go-${col.next} ${
+                                  col.next === 'preparing' && isFailedPayment ? 'btn--go-preparing-warn' : ''
+                                }`}
+                                onClick={() => move(o, col.next!)}
+                              >
+                                {col.next === 'preparing' && isFailedPayment ? '⚠️ Start preparing (Payment Failed) →' : col.nextLabel}
                               </button>
                             )}
                           </div>
@@ -266,6 +297,79 @@ export function KitchenPage() {
             })
           )}
         </main>
+      )}
+
+      {warnOrder && (
+        <div className="modal-overlay" onClick={() => setWarnOrder(null)}>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Payment status warning"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 500 }}
+          >
+            <div className="modal__header">
+              <h2 style={{ color: warnOrder.type === 'failed' ? 'var(--bad)' : 'var(--warn)' }}>
+                {warnOrder.type === 'failed' ? '⚠️ Payment Failed Warning' : '⚠️ Unconfirmed Payment Warning'}
+              </h2>
+              <button className="icon-btn" onClick={() => setWarnOrder(null)} aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="modal__body stack">
+              <div
+                className={`alert ${warnOrder.type === 'failed' ? 'alert--error' : 'alert--warn'}`}
+                style={{ padding: '16px', fontSize: '0.98rem', lineHeight: '1.45' }}
+              >
+                {warnOrder.type === 'failed' ? (
+                  <>
+                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '1.05rem' }}>
+                      ⚠️ The online payment for this order has FAILED!
+                    </strong>
+                    Order <strong>#{shortOrderId(warnOrder.order.id)}</strong> for{' '}
+                    <strong>{warnOrder.order.customer_name}</strong> attempted online payment for{' '}
+                    <strong>{formatPrice(warnOrder.order.total)}</strong>, but the transaction was declined or failed.
+                  </>
+                ) : (
+                  <>
+                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '1.05rem' }}>
+                      ⚠️ This online order is still AWAITING PAYMENT.
+                    </strong>
+                    Order <strong>#{shortOrderId(warnOrder.order.id)}</strong> for{' '}
+                    <strong>{warnOrder.order.customer_name}</strong> has not completed payment for{' '}
+                    <strong>{formatPrice(warnOrder.order.total)}</strong> yet.
+                  </>
+                )}
+              </div>
+
+              <p className="muted" style={{ fontSize: '0.9rem' }}>
+                Preparing food for an unpaid or failed order may result in lost food/revenue if the customer leaves or does not pay. Please confirm with the waiter or cashier before proceeding.
+              </p>
+
+              <div className="modal__footer" style={{ gap: '10px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--lg"
+                  onClick={() => setWarnOrder(null)}
+                >
+                  Cancel (Don't prepare)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn--lg ${warnOrder.type === 'failed' ? 'btn--danger' : 'btn--warn'}`}
+                  onClick={() => {
+                    const { order, status } = warnOrder
+                    setWarnOrder(null)
+                    proceedMove(order, status)
+                  }}
+                >
+                  Start preparing anyway →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
