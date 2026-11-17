@@ -14,10 +14,14 @@ export function FoodImage({ src, alt, className = '' }: { src: string | null; al
     )
   }
 
+  const resolvedSrc = src.startsWith('/images/')
+    ? `${import.meta.env.BASE_URL}${src.slice(1)}`
+    : src
+
   return (
     <img
       className={`food-img ${loaded ? 'is-loaded' : ''} ${className}`}
-      src={src}
+      src={resolvedSrc}
       alt={alt}
       loading="lazy"
       decoding="async"
