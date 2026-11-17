@@ -193,8 +193,14 @@ export function KitchenPage() {
                     list.map((o) => {
                       const tableOrder = isTableOrder(o.address)
                       const isFailedPayment = o.payment_status === 'failed'
+                      const isAwaitingPayment = o.payment_status === 'pending' && o.payment_method === 'squad'
+                      const ticketWarnClass = isFailedPayment
+                        ? 'ticket--failed-payment'
+                        : isAwaitingPayment
+                        ? 'ticket--pending-payment'
+                        : ''
                       return (
-                        <article key={o.id} className={`ticket ${freshIds.has(o.id) ? 'is-fresh' : ''} ${isFailedPayment ? 'ticket--failed-payment' : ''}`}>
+                        <article key={o.id} className={`ticket ${freshIds.has(o.id) ? 'is-fresh' : ''} ${ticketWarnClass}`}>
                           <div className="ticket__head">
                             <strong className="ticket__id">#{shortOrderId(o.id)}</strong>
                             <span className="ticket__time">{timeAgo(o.created_at)}</span>
@@ -202,6 +208,11 @@ export function KitchenPage() {
                           {isFailedPayment && (
                             <div className="ticket__alert-banner ticket__alert-banner--failed">
                               ⚠️ <strong>PAYMENT FAILED</strong> — Confirm before preparing!
+                            </div>
+                          )}
+                          {isAwaitingPayment && (
+                            <div className="ticket__alert-banner ticket__alert-banner--pending">
+                              ⏳ <strong>AWAITING PAYMENT</strong> — Customer has not paid online yet!
                             </div>
                           )}
                           <div className="ticket__badges">
@@ -234,11 +245,19 @@ export function KitchenPage() {
                             {col.next && (
                               <button
                                 className={`btn btn--xl btn--block btn--go-${col.next} ${
-                                  col.next === 'preparing' && isFailedPayment ? 'btn--go-preparing-warn' : ''
+                                  col.next === 'preparing' && isFailedPayment
+                                    ? 'btn--go-preparing-warn'
+                                    : col.next === 'preparing' && isAwaitingPayment
+                                    ? 'btn--go-preparing-amber'
+                                    : ''
                                 }`}
                                 onClick={() => move(o, col.next!)}
                               >
-                                {col.next === 'preparing' && isFailedPayment ? '⚠️ Start preparing (Payment Failed) →' : col.nextLabel}
+                                {col.next === 'preparing' && isFailedPayment
+                                  ? '⚠️ Start preparing (Payment Failed) →'
+                                  : col.next === 'preparing' && isAwaitingPayment
+                                  ? '⏳ Start preparing (Awaiting Payment) →'
+                                  : col.nextLabel}
                               </button>
                             )}
                           </div>
@@ -311,7 +330,7 @@ export function KitchenPage() {
           >
             <div className="modal__header">
               <h2 style={{ color: warnOrder.type === 'failed' ? 'var(--bad)' : 'var(--warn)' }}>
-                {warnOrder.type === 'failed' ? '⚠️ Payment Failed Warning' : '⚠️ Unconfirmed Payment Warning'}
+                {warnOrder.type === 'failed' ? '⚠️ Payment Failed Warning' : '⏳ Awaiting Payment Warning'}
               </h2>
               <button className="icon-btn" onClick={() => setWarnOrder(null)} aria-label="Close">
                 <CloseIcon />
