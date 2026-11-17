@@ -41,21 +41,21 @@ interface PlacedOrder {
 }
 
 const SPICE_LEVELS = [
-  { id: 'No Pepper', icon: '🌱', label: 'No Pepper', desc: 'Zero chilli' },
-  { id: 'Mild Spice', icon: '🌶️', label: 'Mild', desc: 'Gentle warmth' },
-  { id: 'Medium Spice', icon: '🌶️🌶️', label: 'Medium', desc: 'House standard' },
-  { id: 'Extra Spicy (Fiery)', icon: '🔥', label: 'Fiery', desc: 'Extra habanero' },
+  { id: 'No Pepper', label: 'No Pepper', desc: 'Zero chilli' },
+  { id: 'Mild Spice', label: 'Mild', desc: 'Gentle warmth' },
+  { id: 'Medium Spice', label: 'Medium', desc: 'House standard' },
+  { id: 'Extra Spicy (Fiery)', label: 'Hot', desc: 'Extra habanero' },
 ] as const
 
 const COMMON_ALLERGIES = [
-  { id: 'Peanuts / Groundnut', icon: '🥜', label: 'Peanuts / Groundnut' },
-  { id: 'Shellfish / Crayfish', icon: '🦐', label: 'Shellfish / Crayfish' },
-  { id: 'Fish', icon: '🐟', label: 'Fish' },
-  { id: 'Dairy / Milk', icon: '🥛', label: 'Dairy / Milk' },
-  { id: 'Eggs', icon: '🥚', label: 'Eggs' },
-  { id: 'Tree Nuts', icon: '🌰', label: 'Tree Nuts' },
-  { id: 'Gluten / Wheat', icon: '🌾', label: 'Gluten / Wheat' },
-  { id: 'Soy', icon: '🫘', label: 'Soy' },
+  { id: 'Peanuts / Groundnut', label: 'Peanuts / Groundnut' },
+  { id: 'Shellfish / Crayfish', label: 'Shellfish / Crayfish' },
+  { id: 'Fish', label: 'Fish' },
+  { id: 'Dairy / Milk', label: 'Dairy / Milk' },
+  { id: 'Eggs', label: 'Eggs' },
+  { id: 'Tree Nuts', label: 'Tree Nuts' },
+  { id: 'Gluten / Wheat', label: 'Gluten / Wheat' },
+  { id: 'Soy', label: 'Soy' },
 ] as const
 
 const PLACED_KEY = 'menu-app-placed-order'
@@ -411,29 +411,20 @@ export function CheckoutPage() {
 
           <div className={`context-banner ${isDelivery ? 'context-banner--delivery' : ''}`}>
             {isDelivery ? (
-              <>
-                <span className="context-banner__icon">🛵</span>
-                <div>
-                  <strong>Delivery Order</strong>
-                  <small>Your food will be prepared fresh and delivered to your address.</small>
-                </div>
-              </>
+              <div>
+                <strong>Delivery Order</strong>
+                <small>Prepared fresh to order and dispatched to your address.</small>
+              </div>
             ) : linkCtx.tableCode ? (
-              <>
-                <span className="context-banner__icon">🍽️</span>
-                <div>
-                  <strong>{formatTableLabel(linkCtx.tableCode)}</strong>
-                  <small>Table linked via NFC / QR — we'll bring your order right to your table.</small>
-                </div>
-              </>
+              <div>
+                <strong>{formatTableLabel(linkCtx.tableCode)}</strong>
+                <small>Dine-in table linked. Your order will be brought directly to your seat.</small>
+              </div>
             ) : (
-              <>
-                <span className="context-banner__icon">🍽️</span>
-                <div>
-                  <strong>Dine-in Table Order</strong>
-                  <small>Select your table below and we'll serve you right at your seat.</small>
-                </div>
-              </>
+              <div>
+                <strong>Dine-in Order</strong>
+                <small>Select your table number below and we will serve you at your seat.</small>
+              </div>
             )}
           </div>
 
@@ -493,8 +484,8 @@ export function CheckoutPage() {
             {/* Spice Level Selector */}
             <div className="checkout-panel">
               <div className="checkout-panel__head">
-                <strong>🌶️ Choose Spice Level</strong>
-                <small className="muted">How spicy should the kitchen make your order?</small>
+                <strong>Spice Preference</strong>
+                <small className="muted">Select the heat level for your kitchen ticket</small>
               </div>
               <div className="spice-grid" role="radiogroup" aria-label="Spice level">
                 {SPICE_LEVELS.map((sp) => {
@@ -508,7 +499,6 @@ export function CheckoutPage() {
                       className={`spice-btn ${active ? 'is-active' : ''}`}
                       onClick={() => setSpiceLevel(sp.id)}
                     >
-                      <span className="spice-btn__icon">{sp.icon}</span>
                       <strong>{sp.label}</strong>
                       <small>{sp.desc}</small>
                     </button>
@@ -520,9 +510,9 @@ export function CheckoutPage() {
             {/* Allergies Panel */}
             <div className="checkout-panel checkout-panel--allergy">
               <div className="checkout-panel__head">
-                <strong>⚠️ Allergies & Dietary Restrictions</strong>
+                <strong>Allergies & Dietary Notes</strong>
                 <small className="muted">
-                  Tap any ingredient the kitchen must avoid for your table:
+                  Flag any ingredients the kitchen must exclude from your preparation
                 </small>
               </div>
               <div className="allergy-grid" role="group" aria-label="Common food allergies">
@@ -531,7 +521,7 @@ export function CheckoutPage() {
                   className={`allergy-chip ${selectedAllergies.length === 0 ? 'is-safe' : ''}`}
                   onClick={() => setSelectedAllergies([])}
                 >
-                  ✓ No allergies
+                  None
                 </button>
                 {COMMON_ALLERGIES.map((al) => {
                   const active = selectedAllergies.includes(al.id)
@@ -543,24 +533,24 @@ export function CheckoutPage() {
                       className={`allergy-chip ${active ? 'is-active' : ''}`}
                       onClick={() => toggleAllergy(al.id)}
                     >
-                      <span>{al.icon}</span> {al.label}
+                      {al.label}
                     </button>
                   )
                 })}
               </div>
               {selectedAllergies.length > 0 && (
                 <div className="allergy-alert">
-                  ⚠️ Kitchen alert: <strong>Avoid {selectedAllergies.join(', ')}</strong>
+                  Kitchen alert: <strong>Exclude {selectedAllergies.join(', ')}</strong>
                 </div>
               )}
               <label className="field" style={{ marginTop: 6 }}>
                 <span>
-                  Other allergy or special instructions <small className="muted">(optional)</small>
+                  Additional kitchen notes <small className="muted">(optional)</small>
                 </span>
                 <textarea
                   rows={2}
                   maxLength={500}
-                  placeholder="e.g. No onions, sauce on the side, extra plantain…"
+                  placeholder="e.g. No onions, sauce on the side, extra plantain"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -592,28 +582,28 @@ export function CheckoutPage() {
 
           {/* Group / Multi-payer selector */}
           <div className="split-box">
-            <div className="split-box__label">How many people are paying?</div>
+            <div className="split-box__label">Bill arrangement</div>
             <div className="segmented segmented--3" role="radiogroup" aria-label="Split bill mode">
               <button
                 type="button"
                 className={splitMode === 'single' ? 'is-active' : ''}
                 onClick={() => setSplitMode('single')}
               >
-                👤 1 Person
+                Single bill
               </button>
               <button
                 type="button"
                 className={splitMode === 'equal' ? 'is-active' : ''}
                 onClick={() => setSplitMode('equal')}
               >
-                👥 Split Equally
+                Split equally
               </button>
               <button
                 type="button"
                 className={splitMode === 'items' ? 'is-active' : ''}
                 onClick={() => setSplitMode('items')}
               >
-                🍽️ Split by Dish
+                Split by item
               </button>
             </div>
 
@@ -760,7 +750,7 @@ export function CheckoutPage() {
           <div className="stack">
             {lastReference && (
               <button className="btn btn--ghost btn--lg btn--block" onClick={() => confirmPayment(placed, lastReference)}>
-                I've paid — check again
+                Verify payment status
               </button>
             )}
             <button className="btn btn--primary btn--lg btn--block" onClick={() => runSquad(placed)}>
@@ -811,9 +801,9 @@ export function CheckoutPage() {
           {/* Individual share payments when 2+ people split the bill */}
           {placed.splitShares && placed.splitShares.length > 0 && (
             <div className="split-done-box">
-              <h3>👥 Group Split Breakdown ({placed.splitShares.length} people)</h3>
+              <h3>Split Bill Breakdown ({placed.splitShares.length} guests)</h3>
               <p className="muted small">
-                Each person can pay their share below with Squad or settle at the table with POS / transfer / cash.
+                Each guest can pay their share online below or settle at the table with card, transfer, or cash.
               </p>
               <div className="split-done-list">
                 {placed.splitShares.map((s, idx) => (
@@ -833,7 +823,7 @@ export function CheckoutPage() {
                           disabled={payingShareIdx !== null}
                           onClick={() => payIndividualShareWithSquad(idx)}
                         >
-                          {payingShareIdx === idx ? 'Opening…' : 'Pay share with Squad'}
+                          {payingShareIdx === idx ? 'Opening...' : 'Pay share'}
                         </button>
                       ) : (
                         <span className="badge badge--cash">{isDelivery ? "Pay on delivery" : "Pay at table"}</span>
@@ -847,7 +837,7 @@ export function CheckoutPage() {
 
           {placed.details.notes && (
             <div className="notice">
-              <strong>Notes & details:</strong> {placed.details.notes}
+              <strong>Kitchen notes:</strong> {placed.details.notes}
             </div>
           )}
 
@@ -855,12 +845,12 @@ export function CheckoutPage() {
 
           <p className="muted small center">
             {isTableOrder(placed.details.address)
-              ? `🍽️ Serving to ${placed.details.address}`
-              : `🛵 ${placed.details.address}`}
+              ? `Service location: ${placed.details.address}`
+              : `Delivery address: ${placed.details.address}`}
           </p>
 
           <button className="btn btn--primary btn--lg btn--block" onClick={finish}>
-            Order more / Back to menu
+            Return to menu
           </button>
         </section>
       )}

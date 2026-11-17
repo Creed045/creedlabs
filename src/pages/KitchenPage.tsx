@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FoodImage } from '../components/FoodImage'
-import { BellIcon, CloseIcon } from '../components/Icons'
+import { AlertIcon, BellIcon, CheckIcon, ClockIcon, CloseIcon } from '../components/Icons'
 import { LiveDot } from '../components/LiveDot'
 import { PaymentBadge } from '../components/PaymentBadge'
 import { StaffHeader } from '../components/StaffHeader'
@@ -13,10 +13,10 @@ import { isTableOrder, shortOrderId, type MenuItem, type Order, type OrderStatus
 import { useMenu } from '../lib/useMenu'
 import { useLiveWaiterCalls } from '../lib/waiter'
 
-const COLUMNS: { status: OrderStatus; title: string; next?: OrderStatus; nextLabel?: string; prev?: OrderStatus }[] = [
-  { status: 'new', title: 'New', next: 'preparing', nextLabel: 'Start preparing →' },
-  { status: 'preparing', title: 'Preparing', next: 'ready', nextLabel: 'Mark ready →', prev: 'new' },
-  { status: 'ready', title: 'Ready', next: 'delivered', nextLabel: 'Served / Delivered ✓', prev: 'preparing' },
+const COLUMNS: { status: OrderStatus; title: string; subtitle: string; next?: OrderStatus; nextLabel?: string; prev?: OrderStatus }[] = [
+  { status: 'new', title: 'Incoming', subtitle: 'New tickets', next: 'preparing', nextLabel: 'Start prep' },
+  { status: 'preparing', title: 'In Prep', subtitle: 'On the line', next: 'ready', nextLabel: 'Mark ready', prev: 'new' },
+  { status: 'ready', title: 'Ready', subtitle: 'Awaiting runner', next: 'delivered', nextLabel: 'Complete', prev: 'preparing' },
 ]
 
 const ACTIVE: OrderStatus[] = ['new', 'preparing', 'ready']
@@ -37,7 +37,10 @@ export function KitchenPage() {
   const [, setTick] = useState(0)
 
   const { items: menuItems, setItems: setMenuItems, loading: menuLoading } = useMenu()
-  const { calls: waiterCalls, dismissCall } = useLiveWaiterCalls(() => { playChime(); vibrate() })
+  const { calls: waiterCalls, dismissCall } = useLiveWaiterCalls(() => {
+    playChime()
+    vibrate()
+  })
   const availableCount = menuItems.filter((m) => m.available).length
 
   const { orders, loading, error, connected, patchLocal } = useLiveOrders({
@@ -56,7 +59,7 @@ export function KitchenPage() {
   }, [])
 
   useEffect(() => {
-    document.title = alertCount > 0 ? `(${alertCount}) New order! · Kitchen` : 'Kitchen board'
+    document.title = alertCount > 0 ? `(${alertCount}) New ticket · Kitchen` : 'Kitchen Display'
   }, [alertCount])
 
   const enableSound = async () => {
@@ -71,7 +74,6 @@ export function KitchenPage() {
   }
 
   const move = async (order: Order, status: OrderStatus) => {
-    // Show a prominent confirmation warning if kitchen wants to start preparing an order with failed or unconfirmed payment
     if (status === 'preparing') {
       if (order.payment_status === 'failed') {
         setWarnOrder({ order, status, type: 'failed' })
@@ -97,7 +99,7 @@ export function KitchenPage() {
     const e = await updateOrderStatus(order.id, status)
     if (e) {
       patchLocal(order.id, { status: previous })
-      setErr(`Could not move order #${shortOrderId(order.id)}: ${e}`)
+      setErr(`Could not update ticket #${shortOrderId(order.id)}: ${e}`)
     }
   }
 
@@ -115,26 +117,30 @@ export function KitchenPage() {
   return (
     <div className="staff-page kitchen">
       <StaffHeader
-        title="Kitchen board"
+        title="Kitchen Display"
         right={
           <>
-            <div className="kitchen-nav">
+            <div className="kitchen-nav" role="tablist" aria-label="Kitchen views">
               <button
+                role="tab"
+                aria-selected={view === 'orders'}
                 className={`kitchen-nav__btn ${view === 'orders' ? 'is-active' : ''}`}
                 onClick={() => setView('orders')}
               >
-                📋 Live Orders ({orders.length})
+                Active Tickets <span className="kitchen-nav__count">{orders.length}</span>
               </button>
               <button
+                role="tab"
+                aria-selected={view === 'stock'}
                 className={`kitchen-nav__btn ${view === 'stock' ? 'is-active' : ''}`}
                 onClick={() => setView('stock')}
               >
-                🍲 Food Availability ({availableCount}/{menuItems.length})
+                Item Availability <span className="kitchen-nav__count">{availableCount}/{menuItems.length}</span>
               </button>
             </div>
             <LiveDot connected={connected} />
             <button className={`btn btn--sm ${soundOn ? 'btn--ok' : 'btn--ghost'}`} onClick={enableSound}>
-              <BellIcon size={16} /> {soundOn ? 'Sound on' : 'Enable sound'}
+              <BellIcon size={14} /> {soundOn ? 'Audio on' : 'Audio off'}
             </button>
           </>
         }
@@ -148,22 +154,23 @@ export function KitchenPage() {
             setView('orders')
           }}
         >
-          🔔 {alertCount} new {alertCount === 1 ? 'order' : 'orders'} — tap to view
+          {alertCount} new {alertCount === 1 ? 'ticket' : 'tickets'} received · Tap to acknowledge
         </button>
       )}
 
-            {waiterCalls.length > 0 && (
+      {waiterCalls.length > 0 && (
         <div className="waiter-alerts waiter-alerts--kitchen">
           {waiterCalls.map((c) => (
             <div key={c.id} className="waiter-alert-card">
-              <div>
-                <strong>🔔 {c.table_label}</strong>
-                <span> · {c.reason}</span>
-                {c.customer_name && <small className="muted"> ({c.customer_name})</small>}
-                <small className="muted"> · {timeAgo(c.created_at)}</small>
+              <div className="waiter-alert-card__body">
+                <span className="waiter-alert-card__tag">Table Request</span>
+                <strong>{c.table_label}</strong>
+                <span>{c.reason}</span>
+                {c.customer_name && <small className="muted">({c.customer_name})</small>}
+                <small className="muted">· {timeAgo(c.created_at)}</small>
               </div>
               <button className="btn btn--primary btn--sm" onClick={() => dismissCall(c.id)}>
-                ✓ Attended
+                <CheckIcon size={14} /> Acknowledge
               </button>
             </div>
           ))}
@@ -180,7 +187,13 @@ export function KitchenPage() {
             return (
               <section key={col.status} className={`board__col board__col--${col.status}`}>
                 <header className="board__head">
-                  <h2>{col.title}</h2>
+                  <div className="board__head-left">
+                    <span className={`board__dot board__dot--${col.status}`} aria-hidden="true" />
+                    <div>
+                      <h2>{col.title}</h2>
+                      <small className="board__subtitle">{col.subtitle}</small>
+                    </div>
+                  </div>
                   <span className="board__count">{list.length}</span>
                 </header>
 
@@ -188,7 +201,7 @@ export function KitchenPage() {
                   {loading ? (
                     <div className="ticket skeleton" style={{ height: 180 }} />
                   ) : list.length === 0 ? (
-                    <p className="board__empty">No orders</p>
+                    <div className="board__empty">No tickets in {col.title.toLowerCase()}</div>
                   ) : (
                     list.map((o) => {
                       const tableOrder = isTableOrder(o.address)
@@ -202,49 +215,62 @@ export function KitchenPage() {
                       return (
                         <article key={o.id} className={`ticket ${freshIds.has(o.id) ? 'is-fresh' : ''} ${ticketWarnClass}`}>
                           <div className="ticket__head">
-                            <strong className="ticket__id">#{shortOrderId(o.id)}</strong>
+                            <div className="ticket__head-main">
+                              <strong className="ticket__id">#{shortOrderId(o.id)}</strong>
+                              <span className={`order-card__place ${tableOrder ? 'is-table' : 'is-delivery'}`}>
+                                {tableOrder ? o.address : 'Delivery'}
+                              </span>
+                            </div>
                             <span className="ticket__time">{timeAgo(o.created_at)}</span>
                           </div>
+
+                          <div className="ticket__meta-row">
+                            <span className="ticket__who">{o.customer_name}</span>
+                            <PaymentBadge order={o} />
+                          </div>
+
                           {isFailedPayment && (
                             <div className="ticket__alert-banner ticket__alert-banner--failed">
-                              ⚠️ <strong>PAYMENT FAILED</strong> — Confirm before preparing!
+                              <AlertIcon size={15} />
+                              <span>Payment failed · Verify before preparing</span>
                             </div>
                           )}
                           {isAwaitingPayment && (
                             <div className="ticket__alert-banner ticket__alert-banner--pending">
-                              ⏳ <strong>AWAITING PAYMENT</strong> — Customer has not paid online yet!
+                              <ClockIcon size={15} />
+                              <span>Awaiting payment · Online checkout incomplete</span>
                             </div>
                           )}
-                          <div className="ticket__badges">
-                            <span className={`order-card__place ${tableOrder ? 'is-table' : 'is-delivery'}`}>
-                              {tableOrder ? `🍽️ ${o.address}` : `🛵 ${o.address}`}
-                            </span>
-                            <PaymentBadge order={o} large />
-                          </div>
-                          <div className="ticket__who">
-                            Customer: <strong>{o.customer_name}</strong>
-                          </div>
+
                           <ul className="ticket__items">
                             {o.items.map((it, i) => (
                               <li key={`${it.id}-${i}`}>
-                                <span className="ticket__qty">{it.quantity}</span> {it.name}
+                                <span className="ticket__qty">{it.quantity}×</span>
+                                <span className="ticket__item-name">{it.name}</span>
                               </li>
                             ))}
                           </ul>
+
                           {o.notes && (
                             <p className="ticket__notes">
-                              ⚠️ <strong>Notes / Allergies:</strong> {o.notes}
+                              <strong>Note:</strong> {o.notes}
                             </p>
                           )}
+
                           <div className="ticket__actions">
                             {col.prev && (
-                              <button className="btn btn--ghost btn--xl" onClick={() => move(o, col.prev!)} aria-label="Move back">
-                                ←
+                              <button
+                                className="btn btn--ghost btn--sm ticket__back-btn"
+                                onClick={() => move(o, col.prev!)}
+                                aria-label="Move back to previous stage"
+                                title="Return to previous stage"
+                              >
+                                Undo
                               </button>
                             )}
                             {col.next && (
                               <button
-                                className={`btn btn--xl btn--block btn--go-${col.next} ${
+                                className={`btn btn--block btn--go-${col.next} ${
                                   col.next === 'preparing' && isFailedPayment
                                     ? 'btn--go-preparing-warn'
                                     : col.next === 'preparing' && isAwaitingPayment
@@ -254,9 +280,9 @@ export function KitchenPage() {
                                 onClick={() => move(o, col.next!)}
                               >
                                 {col.next === 'preparing' && isFailedPayment
-                                  ? '⚠️ Start preparing (Payment Failed) →'
+                                  ? 'Start prep (Payment failed)'
                                   : col.next === 'preparing' && isAwaitingPayment
-                                  ? '⏳ Start preparing (Awaiting Payment) →'
+                                  ? 'Start prep (Awaiting payment)'
                                   : col.nextLabel}
                               </button>
                             )}
@@ -274,15 +300,15 @@ export function KitchenPage() {
         <main className="kitchen-stock">
           <header className="kitchen-stock__header">
             <div>
-              <h2>🍲 Select Available Foods</h2>
-              <p>Tap any dish to mark it Available or Sold Out on the customer menu immediately.</p>
+              <h2>Menu Availability (86 List)</h2>
+              <p>Click any dish to toggle stock status on the customer menu immediately.</p>
             </div>
           </header>
 
           {menuLoading ? (
             <div className="kitchen-stock__grid">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="kitchen-dish skeleton" style={{ height: 92 }} />
+                <div key={i} className="kitchen-dish skeleton" style={{ height: 76 }} />
               ))}
             </div>
           ) : (
@@ -306,7 +332,7 @@ export function KitchenPage() {
                           <small>{formatPrice(dish.price)}</small>
                         </div>
                         <span className={`kitchen-dish__status ${dish.available ? 'is-on' : 'is-off'}`}>
-                          {dish.available ? '✓ Available' : '✕ Sold Out'}
+                          {dish.available ? 'In stock' : 'Sold out'}
                         </span>
                       </button>
                     ))}
@@ -326,11 +352,11 @@ export function KitchenPage() {
             aria-modal="true"
             aria-label="Payment status warning"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 500 }}
+            style={{ maxWidth: 480 }}
           >
             <div className="modal__header">
               <h2 style={{ color: warnOrder.type === 'failed' ? 'var(--bad)' : 'var(--warn)' }}>
-                {warnOrder.type === 'failed' ? '⚠️ Payment Failed Warning' : '⏳ Awaiting Payment Warning'}
+                {warnOrder.type === 'failed' ? 'Payment Failed Warning' : 'Awaiting Payment Warning'}
               </h2>
               <button className="icon-btn" onClick={() => setWarnOrder(null)} aria-label="Close">
                 <CloseIcon />
@@ -339,51 +365,49 @@ export function KitchenPage() {
             <div className="modal__body stack">
               <div
                 className={`alert ${warnOrder.type === 'failed' ? 'alert--error' : 'alert--warn'}`}
-                style={{ padding: '16px', fontSize: '0.98rem', lineHeight: '1.45' }}
+                style={{ padding: '14px 16px', fontSize: '0.94rem', lineHeight: '1.5' }}
               >
                 {warnOrder.type === 'failed' ? (
                   <>
-                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '1.05rem' }}>
-                      ⚠️ The online payment for this order has FAILED!
+                    <strong style={{ display: 'block', marginBottom: '4px' }}>
+                      Online payment for this ticket was declined.
                     </strong>
-                    Order <strong>#{shortOrderId(warnOrder.order.id)}</strong> for{' '}
-                    <strong>{warnOrder.order.customer_name}</strong> attempted online payment for{' '}
-                    <strong>{formatPrice(warnOrder.order.total)}</strong>, but the transaction was declined or failed.
+                    Ticket <strong>#{shortOrderId(warnOrder.order.id)}</strong> ({warnOrder.order.customer_name},{' '}
+                    <strong>{formatPrice(warnOrder.order.total)}</strong>) shows a failed payment status.
                   </>
                 ) : (
                   <>
-                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '1.05rem' }}>
-                      ⚠️ This online order is still AWAITING PAYMENT.
+                    <strong style={{ display: 'block', marginBottom: '4px' }}>
+                      Online payment has not been completed yet.
                     </strong>
-                    Order <strong>#{shortOrderId(warnOrder.order.id)}</strong> for{' '}
-                    <strong>{warnOrder.order.customer_name}</strong> has not completed payment for{' '}
-                    <strong>{formatPrice(warnOrder.order.total)}</strong> yet.
+                    Ticket <strong>#{shortOrderId(warnOrder.order.id)}</strong> ({warnOrder.order.customer_name},{' '}
+                    <strong>{formatPrice(warnOrder.order.total)}</strong>) is still awaiting customer payment.
                   </>
                 )}
               </div>
 
-              <p className="muted" style={{ fontSize: '0.9rem' }}>
-                Preparing food for an unpaid or failed order may result in lost food/revenue if the customer leaves or does not pay. Please confirm with the waiter or cashier before proceeding.
+              <p className="muted" style={{ fontSize: '0.88rem', lineHeight: '1.5' }}>
+                Preparing an unpaid ticket may result in wasted inventory if the guest does not complete payment. Confirm with a manager or server before firing this order.
               </p>
 
-              <div className="modal__footer" style={{ gap: '10px', marginTop: '12px' }}>
+              <div className="modal__footer" style={{ gap: '10px', marginTop: '8px' }}>
                 <button
                   type="button"
-                  className="btn btn--ghost btn--lg"
+                  className="btn btn--ghost"
                   onClick={() => setWarnOrder(null)}
                 >
-                  Cancel (Don't prepare)
+                  Hold ticket
                 </button>
                 <button
                   type="button"
-                  className={`btn btn--lg ${warnOrder.type === 'failed' ? 'btn--danger' : 'btn--warn'}`}
+                  className={`btn ${warnOrder.type === 'failed' ? 'btn--danger' : 'btn--warn'}`}
                   onClick={() => {
                     const { order, status } = warnOrder
                     setWarnOrder(null)
                     proceedMove(order, status)
                   }}
                 >
-                  Start preparing anyway →
+                  Start prep anyway
                 </button>
               </div>
             </div>

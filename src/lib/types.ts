@@ -86,21 +86,21 @@ export function customizationsForDish(item: Pick<MenuItem, 'name' | 'category'>)
   const lower = item.name.toLowerCase()
   if (item.category === 'Drinks') {
     return [
-      { label: 'Ice & Temp', options: ['🧊 Extra Ice', 'Chilled', 'No Ice'] },
+      { label: 'Ice', options: ['Regular ice', 'Extra ice', 'No ice'] },
     ]
   }
   if (item.category === 'Desserts') {
     return [
-      { label: 'Preference', options: ['Served Warm', 'Extra Honey / Drizzle'] },
+      { label: 'Serving', options: ['Served warm', 'Extra drizzle'] },
     ]
   }
   if (lower.includes('egusi') || lower.includes('soup')) {
     return [
       { label: 'Swallow', options: ['Pounded Yam', 'Eba', 'Amala', 'Semovita'] },
-      { label: 'Spice', options: ['Mild', 'Medium', '🌶️ Fiery'] },
+      { label: 'Heat', options: ['Mild', 'Medium', 'Hot'] },
     ]
   }
   return [
-    { label: 'Spice & Prep', options: ['Mild', 'Medium', '🌶️ Fiery', 'No Onions'] },
+    { label: 'Prep', options: ['Mild', 'Medium', 'Hot', 'No onions'] },
   ]
 }

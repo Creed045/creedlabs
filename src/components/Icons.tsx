@@ -1,16 +1,16 @@
-// Small inline SVG icon set (no icon library needed).
+// Clean inline SVG icon set (1.75px stroke, geometric & consistent).
 import type { SVGProps } from 'react'
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number }
 
-function base({ size = 22, ...rest }: IconProps): SVGProps<SVGSVGElement> {
+function base({ size = 18, ...rest }: IconProps): SVGProps<SVGSVGElement> {
   return {
     width: size,
     height: size,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 2,
+    strokeWidth: 1.75,
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
     'aria-hidden': true,
@@ -20,9 +20,16 @@ function base({ size = 22, ...rest }: IconProps): SVGProps<SVGSVGElement> {
 
 export const CartIcon = (p: IconProps) => (
   <svg {...base(p)}>
-    <circle cx="9" cy="21" r="1" />
-    <circle cx="20" cy="21" r="1" />
-    <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+    <path d="M3 6h18" />
+    <path d="M16 10a4 4 0 0 1-8 0" />
+  </svg>
+)
+
+export const SearchIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
   </svg>
 )
 
@@ -77,8 +84,8 @@ export const BellIcon = (p: IconProps) => (
 
 export const CardIcon = (p: IconProps) => (
   <svg {...base(p)}>
-    <rect x="1" y="4" width="22" height="16" rx="2" />
-    <path d="M1 10h22" />
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <path d="M2 10h20" />
   </svg>
 )
 
@@ -92,7 +99,50 @@ export const CashIcon = (p: IconProps) => (
 
 export const PlateIcon = (p: IconProps) => (
   <svg {...base(p)}>
+    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+    <path d="M7 2v20" />
+    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+  </svg>
+)
+
+export const SunIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2m-14.07 7.07 1.41-1.41m11.32-11.32 1.41-1.41" />
+  </svg>
+)
+
+export const MoonIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </svg>
+)
+
+export const AlertIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+    <path d="M12 9v4M12 17h.01" />
+  </svg>
+)
+
+export const ClockIcon = (p: IconProps) => (
+  <svg {...base(p)}>
     <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="5" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+)
+
+export const QrIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19h2M19 14v2" />
+  </svg>
+)
+
+export const ExternalIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
   </svg>
 )

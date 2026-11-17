@@ -56,12 +56,11 @@ export function CartDrawer() {
         {lines.length === 0 ? (
           <div className="drawer__body">
             <EmptyState
-              icon="🛒"
-              title="Your cart is empty"
-              message="Combine Mains, Proteins, Drinks, and Desserts from the menu to get started."
+              title="Your bag is empty"
+              message="Select dishes, sides, or drinks from the menu to begin your order."
               action={
                 <button className="btn btn--primary" onClick={closeCart}>
-                  Browse the menu
+                  Browse menu
                 </button>
               }
             />

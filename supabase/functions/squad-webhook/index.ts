@@ -135,10 +135,6 @@ Deno.serve(async (req) => {
     return json({ ok: true, ignored: true, event: eventName })
   }
 
-  const admin = createClient(Deno.env.get('SUPABASE_URL')!, getAdminKey(), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-
   // 1. Find the matching order by payment_reference or embedded order UUID / metadata
   let { data: order, error: findErr } = await admin
     .from('orders')

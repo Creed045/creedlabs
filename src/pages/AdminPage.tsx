@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { FoodImage } from '../components/FoodImage'
-import { CloseIcon, PlusIcon, TrashIcon } from '../components/Icons'
+import { CheckIcon, CloseIcon, ExternalIcon, PlusIcon, QrIcon, TrashIcon } from '../components/Icons'
 import { LiveDot } from '../components/LiveDot'
 import { MenuItemForm } from '../components/MenuItemForm'
 import { OrderItemsList } from '../components/OrderItemsList'
@@ -32,25 +32,27 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('orders')
 
   useEffect(() => {
-    document.title = 'Admin · Orders, Menu & Links'
+    document.title = `Back Office · ${RESTAURANT_NAME}`
   }, [])
 
   return (
     <div className="staff-page">
-      <StaffHeader title="Admin panel" />
-      <div className="staff-tabs">
-        <button className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}>
-          Orders
-        </button>
-        <button className={tab === 'menu' ? 'is-active' : ''} onClick={() => setTab('menu')}>
-          Menu items
-        </button>
-        <button className={tab === 'links' ? 'is-active' : ''} onClick={() => setTab('links')}>
-          Table & Delivery Links
-        </button>
-        <button className={tab === 'staff' ? 'is-active' : ''} onClick={() => setTab('staff')}>
-          Staff & Password
-        </button>
+      <StaffHeader title="Back Office" />
+      <div className="staff-tabs-wrap">
+        <div className="staff-tabs" role="tablist" aria-label="Back office sections">
+          <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}>
+            Orders
+          </button>
+          <button role="tab" aria-selected={tab === 'menu'} className={tab === 'menu' ? 'is-active' : ''} onClick={() => setTab('menu')}>
+            Menu Catalog
+          </button>
+          <button role="tab" aria-selected={tab === 'links'} className={tab === 'links' ? 'is-active' : ''} onClick={() => setTab('links')}>
+            Tables & QR Links
+          </button>
+          <button role="tab" aria-selected={tab === 'staff'} className={tab === 'staff' ? 'is-active' : ''} onClick={() => setTab('staff')}>
+            Team & Access
+          </button>
+        </div>
       </div>
       <main className="staff-main">
         {tab === 'orders' ? (
@@ -102,6 +104,7 @@ function computeDailyStats(orders: Order[]) {
     topDishes,
   }
 }
+
 function OrdersPanel() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
@@ -155,14 +158,15 @@ function OrdersPanel() {
         <div className="waiter-alerts" role="region" aria-label="Active table calls">
           {waiterCalls.map((c) => (
             <div key={c.id} className="waiter-alert-card">
-              <div>
-                <strong>🔔 {c.table_label}</strong>
-                <span> · {c.reason}</span>
-                {c.customer_name && <small className="muted"> ({c.customer_name})</small>}
-                <small className="muted"> · {timeAgo(c.created_at)}</small>
+              <div className="waiter-alert-card__body">
+                <span className="waiter-alert-card__tag">Table Request</span>
+                <strong>{c.table_label}</strong>
+                <span>{c.reason}</span>
+                {c.customer_name && <small className="muted">({c.customer_name})</small>}
+                <small className="muted">· {timeAgo(c.created_at)}</small>
               </div>
               <button className="btn btn--primary btn--sm" onClick={() => dismissCall(c.id)}>
-                ✓ Attended
+                <CheckIcon size={14} /> Mark attended
               </button>
             </div>
           ))}
@@ -171,21 +175,21 @@ function OrdersPanel() {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <small className="muted">Today's Revenue</small>
+          <span className="stat-card__label">Gross Revenue (Today)</span>
           <strong className="stat-card__value">{formatPrice(stats.revenue)}</strong>
           <span className="muted small">Paid online: {formatPrice(stats.paidOnline)}</span>
         </div>
 
         <div className="stat-card">
-          <small className="muted">Today's Orders</small>
+          <span className="stat-card__label">Orders Today</span>
           <strong className="stat-card__value">{stats.todayCount}</strong>
           <span className="muted small">{stats.activeCount} active in kitchen</span>
         </div>
 
         <div className="stat-card">
-          <small className="muted">🔥 Top Dishes Today</small>
+          <span className="stat-card__label">Top Movers Today</span>
           {stats.topDishes.length === 0 ? (
-            <span className="muted small">No orders placed today yet</span>
+            <span className="muted small">No orders recorded today</span>
           ) : (
             <ul className="stat-card__list">
               {stats.topDishes.map(([dishName, qty]) => (
@@ -199,8 +203,8 @@ function OrdersPanel() {
         </div>
 
         <div className="stat-card">
-          <small className="muted">🔔 Customer "Call Waiter" Button</small>
-          <label className="switch-row" style={{ marginTop: 6 }}>
+          <span className="stat-card__label">Table Service Requests</span>
+          <label className="switch-row" style={{ marginTop: 4 }}>
             <input
               type="checkbox"
               checked={callWaiterEnabled}
@@ -208,10 +212,10 @@ function OrdersPanel() {
             />
             <span className="switch" aria-hidden="true" />
             <span className={callWaiterEnabled ? 'text-ok' : 'muted'}>
-              {callWaiterEnabled ? 'Enabled on tables' : 'Turned off'}
+              {callWaiterEnabled ? 'Active on tables' : 'Paused'}
             </span>
           </label>
-          <span className="muted small">Toggle whether table guests see "Call waiter"</span>
+          <span className="muted small">Controls the "Service" button on dine-in menus</span>
         </div>
       </div>
 
@@ -219,7 +223,7 @@ function OrdersPanel() {
         <div className="chips">
           {(['all', ...ORDER_STATUSES.map((s) => s.value)] as const).map((s) => (
             <button key={s} className={`chip ${filter === s ? 'is-active' : ''}`} onClick={() => setFilter(s)}>
-              {s === 'all' ? 'All' : ORDER_STATUSES.find((x) => x.value === s)?.label}
+              {s === 'all' ? 'All orders' : ORDER_STATUSES.find((x) => x.value === s)?.label}
               <span>{counts[s] ?? 0}</span>
             </button>
           ))}
@@ -236,7 +240,7 @@ function OrdersPanel() {
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <EmptyState icon="🧾" title="No orders here yet" message="New orders will appear instantly — no need to refresh." />
+        <EmptyState title="No orders in this view" message="Incoming orders appear here automatically in real time." />
       ) : (
         <div className="orders-grid">
           {visible.map((o) => {
@@ -244,9 +248,9 @@ function OrdersPanel() {
             return (
               <article key={o.id} className={`order-card ${freshIds.has(o.id) ? 'is-fresh' : ''}`}>
                 <header className="order-card__head">
-                  <div>
-                    <strong>#{shortOrderId(o.id)}</strong>
-                    <small className="muted"> · {timeAgo(o.created_at)}</small>
+                  <div className="order-card__id-group">
+                    <strong className="mono">#{shortOrderId(o.id)}</strong>
+                    <small className="muted">{timeAgo(o.created_at)}</small>
                   </div>
                   <PaymentBadge order={o} />
                 </header>
@@ -254,13 +258,13 @@ function OrdersPanel() {
                 <div className="order-card__customer">
                   <div className="order-card__who">
                     <span className={`order-card__place ${tableOrder ? 'is-table' : 'is-delivery'}`}>
-                      {tableOrder ? `🍽️ ${o.address}` : `🛵 ${o.address}`}
+                      {tableOrder ? o.address : `Delivery · ${o.address}`}
                     </span>
                     <strong>{o.customer_name}</strong>
                   </div>
                   {o.notes && (
                     <div className="order-card__notes">
-                      <strong>Notes / Allergies:</strong> {o.notes}
+                      <strong>Note:</strong> {o.notes}
                     </div>
                   )}
                 </div>
@@ -337,11 +341,14 @@ function MenuPanel() {
   return (
     <section>
       <div className="panel-toolbar">
-        <h2 className="panel-title">
-          Menu items <span className="muted">({items.length})</span>
-        </h2>
+        <div>
+          <h2 className="panel-title">
+            Menu Catalog <span className="muted">({items.length})</span>
+          </h2>
+          <p className="muted small">Manage dishes, pricing, photos, and real-time kitchen availability.</p>
+        </div>
         <button className="btn btn--primary" onClick={() => setEditing('new')}>
-          <PlusIcon size={18} /> Add item
+          <PlusIcon size={16} /> Add dish
         </button>
       </div>
 
@@ -350,30 +357,34 @@ function MenuPanel() {
       {loading ? (
         <div className="admin-menu">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="admin-item skeleton" style={{ height: 96 }} />
+            <div key={i} className="admin-item skeleton" style={{ height: 76 }} />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <EmptyState title="No menu items yet" message="Add your first dish to get started." />
+        <EmptyState title="No dishes in catalog" message="Add your first dish to publish your menu." />
       ) : (
         CATEGORIES.map((cat) => {
           const list = items.filter((i) => i.category === cat)
           if (list.length === 0) return null
           return (
             <div key={cat} className="admin-menu-group">
-              <h3>{cat}</h3>
+              <h3>{cat} <span>({list.length})</span></h3>
               <div className="admin-menu">
                 {list.map((item) => (
                   <div key={item.id} className={`admin-item ${item.available ? '' : 'is-soldout'}`}>
                     <FoodImage src={item.image_url} alt={item.name} className="admin-item__img" />
                     <div className="admin-item__info">
-                      <strong>{item.name}</strong>
-                      <span className="muted">{formatPrice(item.price)}</span>
+                      <div className="admin-item__title-row">
+                        <strong>{item.name}</strong>
+                        {item.best_seller && <span className="admin-item__tag">Popular</span>}
+                      </div>
+                      <span className="muted small admin-item__desc">{item.description}</span>
                     </div>
+                    <div className="admin-item__price">{formatPrice(item.price)}</div>
                     <label className="switch-row switch-row--compact" title="Toggle availability">
                       <input type="checkbox" checked={item.available} onChange={() => toggleAvailable(item)} />
                       <span className="switch" aria-hidden="true" />
-                      <span className={item.available ? 'text-ok' : 'text-bad'}>{item.available ? 'Available' : 'Sold out'}</span>
+                      <span className={item.available ? 'text-ok' : 'text-bad'}>{item.available ? 'In stock' : 'Sold out'}</span>
                     </label>
                     <div className="admin-item__actions">
                       <button className="btn btn--ghost btn--sm" onClick={() => setEditing(item)}>
@@ -410,7 +421,10 @@ function LinksPanel() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [qrModal, setQrModal] = useState<{ title: string; subtitle: string; url: string } | null>(null)
 
-  const defaultOrigin = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname) ? window.location.protocol + '//10.232.130.108:' + (window.location.port || '5173') : window.location.origin
+  const defaultOrigin =
+    /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
+      ? window.location.protocol + '//10.232.130.108:' + (window.location.port || '5173')
+      : window.location.origin
   const [origin, setOrigin] = useState(defaultOrigin)
   const deliveryUrl = buildDeliveryUrl(origin)
 
@@ -496,29 +510,28 @@ function LinksPanel() {
 
   return (
     <section className="links-section">
-      <div className="links-controls" style={{ marginBottom: 12 }}>
+      <div className="links-controls">
         <label className="field" style={{ flex: 1 }}>
-          <span>Base URL for Phone QR & NFC Links (use your Wi-Fi IP or live domain, not localhost)</span>
-          <input value={origin} onChange={(e) => setOrigin(e.target.value.replace(/\/+$/, ''))} placeholder="http://10.232.130.108:5174" />
+          <span>Public Base URL for QR & NFC Tags</span>
+          <input value={origin} onChange={(e) => setOrigin(e.target.value.replace(/\/+$/, ''))} placeholder="https://your-domain.com" />
         </label>
       </div>
-      {/* 1. Delivery Link Variation */}
+
       <div className="link-feature-card">
         <div className="link-feature-card__info">
-          <span className="badge badge--cash">Delivery Variation</span>
-          <h2>🛵 Online Delivery Link</h2>
-          <p className="muted">
-            Share this link on Instagram, WhatsApp, or your website. Customers who open this link see the{' '}
-            <strong>Delivery address</strong> checkout instead of a table number.
+          <span className="badge badge--cash">Online Ordering</span>
+          <h2>Direct Delivery Link</h2>
+          <p className="muted small">
+            Share on social channels or WhatsApp. Opens the menu pre-configured for home or office delivery.
           </p>
           <code className="link-url">{deliveryUrl}</code>
         </div>
         <div className="link-feature-card__actions">
-          <button className="btn btn--primary" onClick={() => copyLink('delivery', deliveryUrl)}>
-            {copiedKey === 'delivery' ? 'Copied ✓' : 'Copy delivery link'}
+          <button className="btn btn--primary btn--sm" onClick={() => copyLink('delivery', deliveryUrl)}>
+            {copiedKey === 'delivery' ? 'Copied' : 'Copy link'}
           </button>
           <button
-            className="btn btn--ghost"
+            className="btn btn--ghost btn--sm"
             onClick={() =>
               setQrModal({
                 title: 'Delivery Ordering',
@@ -527,22 +540,21 @@ function LinksPanel() {
               })
             }
           >
-            QR Code
+            <QrIcon size={15} /> QR Code
           </button>
-          <a className="btn btn--ghost" href={deliveryUrl} target="_blank" rel="noreferrer">
-            Preview ↗
+          <a className="btn btn--ghost btn--sm" href={deliveryUrl} target="_blank" rel="noreferrer">
+            <ExternalIcon size={14} /> Open
           </a>
         </div>
       </div>
 
-      {/* 2. Table / NFC Link Variations */}
-      <div className="panel-toolbar" style={{ marginTop: 28 }}>
+      <div className="panel-toolbar" style={{ marginTop: 20 }}>
         <div>
           <h2 className="panel-title">
-            🍽️ Table NFC & QR Links <span className="muted">({tables.length})</span>
+            Dine-In Table Links <span className="muted">({tables.length})</span>
           </h2>
           <p className="muted small">
-            Write each link to a table's NFC tag or print its QR code. Customers who tap/scan go straight to the menu for that table and only enter their <strong>Name</strong> and <strong>Notes / Allergies</strong>.
+            Assign each link to a table QR stand or NFC tag so guests order directly to their table.
           </p>
         </div>
       </div>
@@ -550,18 +562,18 @@ function LinksPanel() {
       <div className="links-controls">
         <form className="links-add-form" onSubmit={addTable}>
           <input
-            placeholder="Add table (e.g. 11, VIP-1, Patio-2)"
+            placeholder="Table number or name (e.g. 11, Patio 2)"
             maxLength={30}
             value={newCode}
             onChange={(e) => setNewCode(e.target.value)}
           />
           <button type="submit" className="btn btn--primary" disabled={busy || !newCode.trim()}>
-            <PlusIcon size={18} /> Add table link
+            <PlusIcon size={16} /> Add table
           </button>
         </form>
 
         <div className="links-bulk">
-          <span className="muted small">Quick generate 1 to</span>
+          <span className="muted small">Batch create 1 to</span>
           <input
             type="number"
             min="1"
@@ -571,7 +583,7 @@ function LinksPanel() {
             aria-label="Number of tables"
           />
           <button type="button" className="btn btn--ghost btn--sm" onClick={generateNumberedTables} disabled={busy}>
-            Generate tables
+            Generate
           </button>
         </div>
       </div>
@@ -581,14 +593,13 @@ function LinksPanel() {
       {loading ? (
         <div className="links-grid">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="link-card skeleton" style={{ height: 140 }} />
+            <div key={i} className="link-card skeleton" style={{ height: 132 }} />
           ))}
         </div>
       ) : tables.length === 0 ? (
         <EmptyState
-          icon="🏷️"
-          title="No table links yet"
-          message="Add a table above or click Generate tables to create NFC/QR links for every table."
+          title="No tables configured"
+          message="Add a table above or batch-generate numbered tables."
         />
       ) : (
         <div className="links-grid">
@@ -600,16 +611,16 @@ function LinksPanel() {
               <article key={t.id} className="link-card">
                 <div className="link-card__top">
                   <div>
-                    <strong className="link-card__title">🍽️ {t.label}</strong>
-                    <small className="muted block">Short NFC link: /t/{t.code}</small>
+                    <strong className="link-card__title">{t.label}</strong>
+                    <small className="muted block mono">/t/{t.code}</small>
                   </div>
                   <button
                     className="icon-btn icon-btn--sm"
                     onClick={() => deleteTable(t)}
                     aria-label={`Delete ${t.label}`}
-                    title="Delete table link"
+                    title="Delete table"
                   >
-                    <TrashIcon size={16} />
+                    <TrashIcon size={15} />
                   </button>
                 </div>
 
@@ -617,22 +628,22 @@ function LinksPanel() {
 
                 <div className="link-card__actions">
                   <button className="btn btn--primary btn--sm" onClick={() => copyLink(t.id, url)}>
-                    {isCopied ? 'Copied ✓' : 'Copy NFC link'}
+                    {isCopied ? 'Copied' : 'Copy link'}
                   </button>
                   <button
                     className="btn btn--ghost btn--sm"
                     onClick={() =>
                       setQrModal({
                         title: t.label,
-                        subtitle: `Scan to order right to ${t.label}`,
+                        subtitle: `Scan to order directly to ${t.label}`,
                         url,
                       })
                     }
                   >
-                    QR Code
+                    <QrIcon size={14} /> QR
                   </button>
                   <a className="btn btn--ghost btn--sm" href={shortPath} target="_blank" rel="noreferrer">
-                    Open ↗
+                    <ExternalIcon size={14} /> Open
                   </a>
                 </div>
               </article>
@@ -645,7 +656,7 @@ function LinksPanel() {
         <div className="modal-overlay" onClick={() => setQrModal(null)}>
           <div className="modal qr-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2>{qrModal.title} — QR & NFC Link</h2>
+              <h2>{qrModal.title} · QR Stand Card</h2>
               <button className="icon-btn" onClick={() => setQrModal(null)} aria-label="Close">
                 <CloseIcon />
               </button>
@@ -658,16 +669,16 @@ function LinksPanel() {
                 className="qr-modal__img"
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(qrModal.url)}`}
                 alt={`QR code for ${qrModal.title}`}
-                width={240}
-                height={240}
+                width={220}
+                height={220}
               />
               <code className="link-url">{qrModal.url}</code>
               <div className="modal__footer" style={{ justifyContent: 'center', marginTop: 12 }}>
                 <button className="btn btn--ghost" onClick={() => copyLink('modal', qrModal.url)}>
-                  {copiedKey === 'modal' ? 'Copied ✓' : 'Copy link'}
+                  {copiedKey === 'modal' ? 'Copied' : 'Copy URL'}
                 </button>
                 <button className="btn btn--primary" onClick={() => window.print()}>
-                  Print stand card
+                  Print card
                 </button>
               </div>
             </div>
@@ -693,14 +704,12 @@ function StaffSettingsPanel() {
   const { session } = useAuth()
   const currentUserId = session?.user.id
 
-  // 1. Change own email & password state
   const [myEmail, setMyEmail] = useState(session?.user.email ?? '')
   const [myPassword, setMyPassword] = useState('')
   const [myPasswordConfirm, setMyPasswordConfirm] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
-  // 2. Staff list & create new staff account state
   const [staffList, setStaffList] = useState<StaffMember[]>([])
   const [loadingStaff, setLoadingStaff] = useState(true)
   const [newEmail, setNewEmail] = useState('')
@@ -709,7 +718,6 @@ function StaffSettingsPanel() {
   const [createBusy, setCreateBusy] = useState(false)
   const [staffMsg, setStaffMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
-  // 3. Edit any staff member's email & password modal
   const [editTarget, setEditTarget] = useState<StaffMember | null>(null)
   const [editEmailVal, setEditEmailVal] = useState('')
   const [editPasswordVal, setEditPasswordVal] = useState('')
@@ -774,7 +782,7 @@ function StaffSettingsPanel() {
     } else {
       setMyPassword('')
       setMyPasswordConfirm('')
-      setPwMsg({ type: 'ok', text: 'Your admin login details have been updated!' })
+      setPwMsg({ type: 'ok', text: 'Your account credentials have been updated.' })
       loadStaff()
     }
   }
@@ -799,7 +807,7 @@ function StaffSettingsPanel() {
     } else {
       setStaffMsg({
         type: 'ok',
-        text: `Created ${newRole} account for ${newEmail.trim()}! They can now log in at /staff.`,
+        text: `Created ${newRole} account for ${newEmail.trim()}.`,
       })
       setNewEmail('')
       setNewPassword('')
@@ -845,7 +853,7 @@ function StaffSettingsPanel() {
     if (error) {
       setStaffMsg({ type: 'err', text: error.message })
     } else {
-      setStaffMsg({ type: 'ok', text: `Updated login details for ${cleanEmail}!` })
+      setStaffMsg({ type: 'ok', text: `Updated credentials for ${cleanEmail}.` })
       if (editTarget.id === currentUserId) {
         setMyEmail(cleanEmail)
         await supabase.auth.refreshSession()
@@ -858,16 +866,15 @@ function StaffSettingsPanel() {
 
   return (
     <section className="staff-settings-grid">
-      {/* 1. Change My Email & Password */}
       <div className="card">
-        <h2>🔒 My Admin Login (Email & Password)</h2>
+        <h2>Your Account Credentials</h2>
         <p className="muted small" style={{ marginTop: 4, marginBottom: 16 }}>
-          Change your admin email address or update your password below.
+          Update the email address or password you use to sign in.
         </p>
 
         <form className="form" onSubmit={handleUpdateMyAccount}>
           <label className="field">
-            <span>My admin email</span>
+            <span>Email address</span>
             <input
               type="email"
               required
@@ -877,13 +884,13 @@ function StaffSettingsPanel() {
           </label>
           <label className="field">
             <span>
-              New password <small className="muted">(leave blank to keep current password)</small>
+              New password <small className="muted">(leave blank to keep current)</small>
             </span>
             <input
               type="password"
               autoComplete="new-password"
               minLength={6}
-              placeholder="At least 6 characters"
+              placeholder="Minimum 6 characters"
               value={myPassword}
               onChange={(e) => setMyPassword(e.target.value)}
             />
@@ -894,7 +901,7 @@ function StaffSettingsPanel() {
               type="password"
               autoComplete="new-password"
               minLength={6}
-              placeholder="Repeat new password"
+              placeholder="Re-enter new password"
               value={myPasswordConfirm}
               onChange={(e) => setMyPasswordConfirm(e.target.value)}
             />
@@ -902,30 +909,29 @@ function StaffSettingsPanel() {
 
           {pwMsg && (
             <p className={`alert ${pwMsg.type === 'ok' ? 'alert--info' : 'alert--error'}`}>
-              {pwMsg.type === 'ok' ? `✓ ${pwMsg.text}` : pwMsg.text}
+              {pwMsg.text}
             </p>
           )}
 
           <button type="submit" className="btn btn--primary" disabled={pwBusy}>
-            {pwBusy ? 'Saving…' : 'Save my login details'}
+            {pwBusy ? 'Saving...' : 'Update credentials'}
           </button>
         </form>
       </div>
 
-      {/* 2. Create New Staff Account */}
       <div className="card">
-        <h2>👤 Create Staff Account</h2>
+        <h2>Add Team Member</h2>
         <p className="muted small" style={{ marginTop: 4, marginBottom: 16 }}>
-          Create login accounts for kitchen staff (`/kitchen`) or additional managers (`/admin`).
+          Provision access for kitchen display operators or back-office managers.
         </p>
 
         <form className="form" onSubmit={handleCreateStaff}>
           <label className="field">
-            <span>Staff email</span>
+            <span>Work email</span>
             <input
               type="email"
               required
-              placeholder="e.g. chef2@mamaput.com"
+              placeholder="e.g. kitchen@creedlabs.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
             />
@@ -933,7 +939,7 @@ function StaffSettingsPanel() {
 
           <div className="field-row">
             <label className="field">
-              <span>Initial password</span>
+              <span>Temporary password</span>
               <input
                 type="text"
                 required
@@ -947,31 +953,30 @@ function StaffSettingsPanel() {
             <label className="field">
               <span>Role</span>
               <select value={newRole} onChange={(e) => setNewRole(e.target.value as 'kitchen' | 'admin')}>
-                <option value="kitchen">Kitchen Staff (/kitchen)</option>
-                <option value="admin">Admin (/admin)</option>
+                <option value="kitchen">Kitchen Display (/kitchen)</option>
+                <option value="admin">Back Office Admin (/admin)</option>
               </select>
             </label>
           </div>
 
           {staffMsg && (
             <p className={`alert ${staffMsg.type === 'ok' ? 'alert--info' : 'alert--error'}`}>
-              {staffMsg.type === 'ok' ? `✓ ${staffMsg.text}` : staffMsg.text}
+              {staffMsg.text}
             </p>
           )}
 
           <button type="submit" className="btn btn--primary" disabled={createBusy}>
-            <PlusIcon size={18} /> {createBusy ? 'Creating account…' : 'Create staff account'}
+            <PlusIcon size={16} /> {createBusy ? 'Creating...' : 'Create account'}
           </button>
         </form>
       </div>
 
-      {/* 3. Existing Staff Accounts Directory */}
       <div className="card staff-settings-grid__full">
         <div className="panel-toolbar" style={{ marginBottom: 12 }}>
           <div>
-            <h2>👥 Staff Accounts ({staffList.length})</h2>
+            <h2>Team Directory <span className="muted">({staffList.length})</span></h2>
             <p className="muted small">
-              Change the email address, password, or role for any Admin or Kitchen account.
+              Manage active staff accounts, role assignments, and sign-in credentials.
             </p>
           </div>
         </div>
@@ -986,10 +991,10 @@ function StaffSettingsPanel() {
                 <div key={member.id} className="staff-row">
                   <div className="staff-row__info">
                     <strong>
-                      {member.email} {isMe && <span className="badge badge--paid">You</span>}
+                      {member.email} {isMe && <span className="badge badge--paid">Current user</span>}
                     </strong>
                     <small className="muted">
-                      Accesses {member.role === 'admin' ? '/admin and /kitchen' : '/kitchen only'}
+                      {member.role === 'admin' ? 'Full access · Back Office & Kitchen Display' : 'Kitchen Display only'}
                     </small>
                   </div>
 
@@ -1014,7 +1019,7 @@ function StaffSettingsPanel() {
                         setEditPasswordVal('')
                       }}
                     >
-                      Edit email / password
+                      Edit credentials
                     </button>
                   </div>
                 </div>
@@ -1028,7 +1033,7 @@ function StaffSettingsPanel() {
         <div className="modal-overlay" onClick={() => setEditTarget(null)}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2>Edit {editTarget.role} account</h2>
+              <h2>Edit {editTarget.role} credentials</h2>
               <button className="icon-btn" onClick={() => setEditTarget(null)} aria-label="Close">
                 <CloseIcon />
               </button>
@@ -1045,7 +1050,7 @@ function StaffSettingsPanel() {
               </label>
               <label className="field">
                 <span>
-                  New password <small className="muted">(leave blank to keep current password)</small>
+                  New password <small className="muted">(leave blank to keep existing)</small>
                 </span>
                 <input
                   type="text"
@@ -1060,7 +1065,7 @@ function StaffSettingsPanel() {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn--primary" disabled={editBusy}>
-                  {editBusy ? 'Saving…' : 'Save changes'}
+                  {editBusy ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
             </form>

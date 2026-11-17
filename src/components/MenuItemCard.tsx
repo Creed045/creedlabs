@@ -15,7 +15,6 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
   const activeParts = qty > 0 ? (cartMod ? cartMod.split(', ').filter(Boolean) : []) : draftParts
 
   const toggleOption = (groupOptions: string[], option: string) => {
-    // Allow 1 selection per customization group (e.g. 1 Swallow + 1 Spice level)
     const withoutGroup = activeParts.filter((p) => !groupOptions.includes(p))
     const nextParts = activeParts.includes(option) ? withoutGroup : [...withoutGroup, option]
     const nextMod = nextParts.join(', ')
@@ -34,18 +33,21 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
       <div className="dish__media">
         <FoodImage src={item.image_url} alt={item.name} />
         {!item.available && <span className="dish__soldout">Sold out</span>}
-        {item.available && item.best_seller && <span className="dish__bestseller">🔥 Best seller</span>}
+        {item.available && item.best_seller && <span className="dish__bestseller">Popular</span>}
         {showCategory && <span className="dish__category-tag">{item.category}</span>}
       </div>
       <div className="dish__body">
-        <h3 className="dish__name">{item.name}</h3>
+        <div className="dish__header">
+          <h3 className="dish__name">{item.name}</h3>
+          <span className="dish__price">{formatPrice(item.price)}</span>
+        </div>
         <p className="dish__desc">{item.description}</p>
 
         {item.available && (
           <div className="dish__mods-wrap" aria-label={`Customize ${item.name}`}>
             {groups.map((g) => (
               <div key={g.label} className="dish__mod-group">
-                <span className="dish__mod-label">{g.label}:</span>
+                <span className="dish__mod-label">{g.label}</span>
                 <div className="dish__mods">
                   {g.options.map((option) => (
                     <button
@@ -64,23 +66,22 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
         )}
 
         <div className="dish__footer">
-          <span className="dish__price">{formatPrice(item.price)}</span>
           {!item.available ? (
-            <button className="btn btn--ghost btn--sm" disabled>
-              Unavailable
+            <button className="btn btn--ghost btn--sm btn--block" disabled>
+              Currently unavailable
             </button>
           ) : qty === 0 ? (
-            <button className="btn btn--primary btn--sm" onClick={handleAdd}>
-              <PlusIcon size={16} /> Add
+            <button className="btn btn--primary btn--sm btn--block" onClick={handleAdd}>
+              <PlusIcon size={15} /> Add to order
             </button>
           ) : (
-            <div className="stepper" aria-label={`${item.name} quantity`}>
+            <div className="stepper stepper--full" aria-label={`${item.name} quantity`}>
               <button onClick={() => setQuantity(item.id, qty - 1)} aria-label="Decrease">
-                <MinusIcon size={16} />
+                <MinusIcon size={15} />
               </button>
-              <span>{qty}</span>
+              <span>{qty} in bag</span>
               <button onClick={handleAdd} aria-label="Increase">
-                <PlusIcon size={16} />
+                <PlusIcon size={15} />
               </button>
             </div>
           )}

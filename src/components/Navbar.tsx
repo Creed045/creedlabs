@@ -3,7 +3,7 @@ import { useCart } from '../lib/cart'
 import { RESTAURANT_NAME } from '../lib/config'
 import { formatTableLabel, syncLinkContextFromUrl } from '../lib/orderContext'
 import { CallWaiterButton } from './CallWaiterButton'
-import { CartIcon, LockIcon, PlateIcon } from './Icons'
+import { CartIcon, LockIcon } from './Icons'
 import { ThemePicker } from './ThemePicker'
 
 export function Navbar() {
@@ -14,33 +14,34 @@ export function Navbar() {
   return (
     <header className="navbar">
       <div className="navbar__inner container">
-        <Link to="/" className="navbar__brand">
-          <span className="navbar__logo">
-            <PlateIcon size={20} />
-          </span>
-          <span>{RESTAURANT_NAME}</span>
-        </Link>
+        <div className="navbar__left">
+          <Link to="/" className="navbar__brand">
+            <span className="navbar__mark" aria-hidden="true">C</span>
+            <span className="navbar__brand-text">{RESTAURANT_NAME}</span>
+          </Link>
 
-        <nav className="navbar__actions">
           {linkCtx.mode === 'delivery' ? (
             <span className="navbar__context navbar__context--delivery" title="Delivery mode active">
-              🛵 Delivery
+              Delivery
             </span>
           ) : linkCtx.tableCode ? (
-            <span className="navbar__context" title="NFC / Table link active">
-              🍽️ {formatTableLabel(linkCtx.tableCode)}
+            <span className="navbar__context" title="Table service active">
+              {formatTableLabel(linkCtx.tableCode)}
             </span>
           ) : null}
+        </div>
 
+        <nav className="navbar__actions">
           <CallWaiterButton />
           <ThemePicker />
 
-          <Link to="/staff" className="navbar__staff" title="Staff login">
-            <LockIcon size={16} />
-            <span className="navbar__staff-label">Staff login</span>
+          <Link to="/staff" className="navbar__staff" title="Staff sign in">
+            <LockIcon size={14} />
+            <span className="navbar__staff-label">Staff</span>
           </Link>
-          <button className="navbar__cart" onClick={openCart} aria-label={`Open cart, ${count} items`}>
-            <CartIcon />
+          <button className="navbar__cart" onClick={openCart} aria-label={`Open order bag, ${count} items`}>
+            <CartIcon size={18} />
+            <span className="navbar__cart-label">Bag</span>
             {count > 0 && <span key={count} className="navbar__badge">{count}</span>}
           </button>
         </nav>

@@ -15,7 +15,6 @@ export function CallWaiterButton() {
   const [sentReason, setSentReason] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Hidden if Admin turned off Call Waiter or if customer is on a delivery link
   if (!callWaiterEnabled || linkCtx.mode === 'delivery') return null
 
   const tableLabel = formatTableLabel(linkCtx.tableCode ?? tableInput)
@@ -50,17 +49,17 @@ export function CallWaiterButton() {
           setSentReason(null)
           setOpen(true)
         }}
-        title="Call a waiter to your table"
+        title="Request table assistance"
       >
-        <BellIcon size={16} />
-        <span>Call waiter</span>
+        <BellIcon size={15} />
+        <span>Service</span>
       </button>
 
       {open && (
         <div className="modal-overlay" onClick={() => setOpen(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Call waiter" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Table service" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2>🔔 Call Waiter · {tableLabel}</h2>
+              <h2>Table Service · {tableLabel}</h2>
               <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Close">
                 <CloseIcon />
               </button>
@@ -69,16 +68,16 @@ export function CallWaiterButton() {
               {sentReason ? (
                 <div className="center" style={{ padding: '20px 0' }}>
                   <div className="result-icon">
-                    <CheckIcon size={32} />
+                    <CheckIcon size={28} />
                   </div>
-                  <h3>Waiter notified!</h3>
-                  <p className="muted small">Someone is heading to {tableLabel} ({sentReason}).</p>
+                  <h3>Server notified</h3>
+                  <p className="muted small">Someone will be at {tableLabel} shortly ({sentReason}).</p>
                 </div>
               ) : (
                 <>
                   {!linkCtx.tableCode && (
                     <label className="field">
-                      <span>Your table number</span>
+                      <span>Table number</span>
                       <input
                         value={tableInput}
                         onChange={(e) => setTableInput(e.target.value)}
@@ -87,7 +86,7 @@ export function CallWaiterButton() {
                       />
                     </label>
                   )}
-                  <p className="muted small">Tap what you need and we'll alert a waiter immediately:</p>
+                  <p className="muted small">Select how we can help at your table:</p>
                   <div className="waiter-reasons">
                     {WAITER_REASONS.map((r) => (
                       <button
@@ -98,7 +97,7 @@ export function CallWaiterButton() {
                         onClick={() => triggerCall(r)}
                       >
                         <strong>{r}</strong>
-                        <span>→</span>
+                        <span className="muted small">Send request</span>
                       </button>
                     ))}
                   </div>

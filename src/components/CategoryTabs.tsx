@@ -8,8 +8,8 @@ interface Props {
 }
 
 const TABS: { key: MenuFilter; label: string }[] = [
-  { key: 'best', label: '🔥 Best Sellers' },
-  { key: 'all', label: '🍽️ All Menu' },
+  { key: 'best', label: 'Popular' },
+  { key: 'all', label: 'Full Menu' },
   ...CATEGORIES.map((c) => ({ key: c as MenuFilter, label: c })),
 ]
 
@@ -24,7 +24,7 @@ export function CategoryTabs({ active, counts, onChange }: Props) {
           className={`tabs__tab ${active === t.key ? 'is-active' : ''}`}
           onClick={() => onChange(t.key)}
         >
-          {t.label}
+          <span>{t.label}</span>
           <span className="tabs__count">{counts[t.key] ?? 0}</span>
         </button>
       ))}

@@ -1,126 +1,20 @@
 /* =========================================================
-   Motion layer — smooth, subtle animations across the app.
-   Loaded last so it can refine earlier styles.
-   Everything is disabled for users who prefer reduced motion.
+   Subtle motion layer — restrained, responsive transitions.
+   Respects prefers-reduced-motion.
    ========================================================= */
 
 :root {
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 0.15s;
-  --dur: 0.25s;
-  --dur-slow: 0.45s;
+  --ease-spring: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 0.12s;
+  --dur: 0.18s;
+  --dur-slow: 0.28s;
 }
 
 html { scroll-behavior: smooth; }
 
-/* Button glass + liquid press effects live in glass.css */
-
-/* ---------- Buttons ---------- */
-
-.btn {
-  transition:
-    background-color var(--dur-fast) ease,
-    border-color var(--dur-fast) ease,
-    color var(--dur-fast) ease,
-    box-shadow var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-spring),
-    filter var(--dur-fast) ease;
-  will-change: transform;
-}
-
-@media (hover: hover) {
-  .btn:hover:not(:disabled):not(.btn--text) { transform: translateY(-2px); }
-  .btn--primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgb(228 87 46 / 0.38); }
-  .btn--ghost:hover:not(:disabled),
-  .btn--danger:hover:not(:disabled),
-  .btn--ok:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
-}
-
-.btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.96);
-  transition-duration: 0.08s;
-}
-
-.btn:focus-visible,
-.icon-btn:focus-visible,
-.tabs__tab:focus-visible,
-.chip:focus-visible {
-  outline: 3px solid rgb(228 87 46 / 0.45);
-  outline-offset: 2px;
-}
-
-/* Icon buttons */
-.icon-btn {
-  transition: background-color var(--dur-fast) ease, transform var(--dur) var(--ease-spring), color var(--dur-fast);
-}
-.icon-btn:hover { transform: scale(1.08); }
-.icon-btn:active { transform: scale(0.92); transition-duration: 0.08s; }
-
-/* Navbar cart */
-.navbar__cart { transition: transform var(--dur) var(--ease-spring), background-color var(--dur-fast); }
-.navbar__cart:hover { transform: scale(1.06); }
-.navbar__cart:active { transform: scale(0.93); }
-.navbar__badge { animation: badge-pop 0.45s var(--ease-spring); }
-
-@keyframes badge-pop {
-  0% { transform: scale(0.4); }
-  60% { transform: scale(1.25); }
-  100% { transform: scale(1); }
-}
-
-/* Category tabs & chips */
-.tabs__tab,
-.chip,
-.spice-btn,
-.allergy-chip,
-.kitchen-nav__btn {
-  transition:
-    background-color var(--dur) var(--ease-out),
-    border-color var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-spring),
-    box-shadow var(--dur) var(--ease-out);
-}
-.tabs__tab:active,
-.chip:active,
-.spice-btn:active,
-.allergy-chip:active,
-.kitchen-nav__btn:active { transform: scale(0.94); }
-.tabs__tab.is-active { animation: tab-select 0.35s var(--ease-spring); }
-
-@keyframes tab-select {
-  0% { transform: scale(0.92); }
-  100% { transform: scale(1); }
-}
-
-/* Steppers (+ / −) */
-.stepper button { transition: transform var(--dur-fast) var(--ease-spring), background-color var(--dur-fast); }
-.stepper button:active:not(:disabled) { transform: scale(0.82); }
-
-/* Payment options */
-.pay-option { transition: border-color var(--dur) ease, transform var(--dur) var(--ease-spring), box-shadow var(--dur) var(--ease-out); }
-@media (hover: hover) {
-  .pay-option:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow); }
-}
-.pay-option:active:not(:disabled) { transform: scale(0.98); }
-
-/* Sticky cart bar */
-.cart-bar {
-  animation: cart-bar-in 0.5s var(--ease-spring);
-  transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur);
-}
-.cart-bar:active { transform: scale(0.97); }
-
-@keyframes cart-bar-in {
-  from { transform: translateY(120%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
 /* ---------- Page transitions ---------- */
 
-/* Opacity-only for page wrappers: a transform here would temporarily become
-   the containing block for fixed children (cart bar, modals). */
 .page-transition,
 .staff-page {
   animation: page-fade var(--dur-slow) var(--ease-out) both;
@@ -134,140 +28,57 @@ html { scroll-behavior: smooth; }
 }
 
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 
-/* ---------- Hero ---------- */
-
-.hero > * { animation: rise-in 0.7s var(--ease-out) both; }
-.hero > *:nth-child(2) { animation-delay: 0.08s; }
-.hero > *:nth-child(3) { animation-delay: 0.16s; }
-
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* ---------- Menu cards: staggered entrance ---------- */
+/* ---------- Dish cards & list items ---------- */
 
 .dish:not(.dish--skeleton) {
-  animation: card-in 0.5s var(--ease-out) backwards;
-  transition: transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-out);
+  animation: card-in 0.28s var(--ease-out) backwards;
 }
-.dish:nth-child(1) { animation-delay: 0.02s; }
-.dish:nth-child(2) { animation-delay: 0.06s; }
-.dish:nth-child(3) { animation-delay: 0.10s; }
-.dish:nth-child(4) { animation-delay: 0.14s; }
-.dish:nth-child(5) { animation-delay: 0.18s; }
-.dish:nth-child(6) { animation-delay: 0.22s; }
-.dish:nth-child(7) { animation-delay: 0.26s; }
-.dish:nth-child(8) { animation-delay: 0.30s; }
-.dish:nth-child(n + 9) { animation-delay: 0.34s; }
-
-@media (hover: hover) {
-  .dish:not(.dish--skeleton):hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
-}
+.dish:nth-child(1) { animation-delay: 0.01s; }
+.dish:nth-child(2) { animation-delay: 0.03s; }
+.dish:nth-child(3) { animation-delay: 0.05s; }
+.dish:nth-child(4) { animation-delay: 0.07s; }
+.dish:nth-child(5) { animation-delay: 0.09s; }
+.dish:nth-child(6) { animation-delay: 0.11s; }
 
 @keyframes card-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
-
-/* Scroll-driven reveal where supported (Chrome/Edge/Android) */
-@supports (animation-timeline: view()) {
-  .dish:not(.dish--skeleton) {
-    animation: card-in linear backwards;
-    animation-timeline: view();
-    animation-range: entry 0% entry 60%;
-    animation-delay: 0s;
-  }
-}
-
-.food-img { transition: opacity 0.45s ease, transform 0.6s var(--ease-out); }
 
 /* ---------- Cart drawer & modals ---------- */
 
-.drawer { transition: transform 0.4s var(--ease-out), visibility 0.4s; }
-.drawer-overlay { transition: opacity 0.3s ease; backdrop-filter: blur(0); }
-.drawer-overlay.is-open { backdrop-filter: blur(3px); }
+.drawer-overlay.is-open { backdrop-filter: blur(2px); }
+.modal-overlay { backdrop-filter: blur(2px); }
 
-.drawer.is-open .cart-line { animation: slide-in-right 0.35s var(--ease-out) backwards; }
-.drawer.is-open .cart-line:nth-child(2) { animation-delay: 0.04s; }
-.drawer.is-open .cart-line:nth-child(3) { animation-delay: 0.08s; }
-.drawer.is-open .cart-line:nth-child(n + 4) { animation-delay: 0.12s; }
+/* ---------- Sticky cart bar ---------- */
 
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: none; }
+.cart-bar {
+  animation: cart-bar-in 0.28s var(--ease-out);
+  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur);
 }
 
-.modal-overlay { animation: fade-in 0.2s ease-out; backdrop-filter: blur(3px); }
-.modal { animation: modal-in 0.35s var(--ease-spring); }
-
-@keyframes modal-in {
-  from { opacity: 0; transform: translateY(28px) scale(0.97); }
-  to { opacity: 1; transform: none; }
+@keyframes cart-bar-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* ---------- Checkout ---------- */
+/* ---------- Navbar cart badge ---------- */
 
-.card { animation: rise-in 0.45s var(--ease-out) backwards; }
-.result-icon { animation: icon-bounce 0.6s var(--ease-spring) both; }
+.navbar__badge { animation: badge-pop 0.25s var(--ease-out); }
 
-@keyframes icon-bounce {
-  0% { transform: scale(0); }
-  60% { transform: scale(1.18); }
+@keyframes badge-pop {
+  0% { transform: scale(0.75); }
+  60% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
 
-/* ---------- Staff: orders, tickets, kitchen ---------- */
+/* ---------- Theme switch ---------- */
 
-.order-card,
-.ticket:not(.skeleton) {
-  animation: card-in 0.4s var(--ease-out) backwards;
-  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), border-color var(--dur);
-}
-
-@media (hover: hover) {
-  .order-card:hover,
-  .ticket:not(.skeleton):hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-}
-
-.kitchen-dish { transition: transform var(--dur) var(--ease-spring), background-color var(--dur), border-color var(--dur), box-shadow var(--dur); }
-@media (hover: hover) {
-  .kitchen-dish:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-}
-.kitchen-dish:active { transform: scale(0.97); }
-.kitchen-dish__status { transition: background-color var(--dur), color var(--dur); }
-
-.waiter-alert-card { animation: slide-in-right 0.4s var(--ease-spring) backwards; }
-
-/* Gentle attention pulse on payment warning banners */
-.ticket__alert-banner { animation: banner-pulse 2.4s ease-in-out infinite; }
-
-@keyframes banner-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(0 0 0 / 0); }
-  50% { box-shadow: 0 0 0 4px rgb(245 158 11 / 0.18); }
-}
-.ticket__alert-banner--failed { animation-name: banner-pulse-bad; }
-
-@keyframes banner-pulse-bad {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(0 0 0 / 0); }
-  50% { box-shadow: 0 0 0 4px rgb(185 28 28 / 0.2); }
-}
-
-/* ---------- Inputs ---------- */
-
-input,
-textarea,
-select {
-  transition: border-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out), background-color var(--dur-fast);
-}
-
-/* ---------- Theme switch: smooth colour change ---------- */
-
-body { transition: background-color 0.3s ease, color 0.3s ease; }
+body { transition: background-color 0.2s ease, color 0.2s ease; }
 
 /* ---------- Accessibility ---------- */
 
@@ -281,5 +92,4 @@ body { transition: background-color 0.3s ease, color 0.3s ease; }
     animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
   }
-  .ripple { display: none; }
 }

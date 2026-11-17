@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { CartBar } from '../components/CartBar'
 import { CategoryTabs } from '../components/CategoryTabs'
 import { EmptyState } from '../components/EmptyState'
-import { CloseIcon } from '../components/Icons'
+import { CloseIcon, SearchIcon } from '../components/Icons'
 import { MenuItemCard } from '../components/MenuItemCard'
 import { MenuSkeleton } from '../components/MenuSkeleton'
 import { CATEGORIES, RESTAURANT_NAME, RESTAURANT_TAGLINE } from '../lib/config'
@@ -65,20 +65,29 @@ export function MenuPage() {
     })
   }, [items, active, query, tagFilter])
 
-  const eyebrow =
+  const serviceLabel =
     linkCtx.mode === 'delivery'
-      ? '🛵 Delivery Order · Fresh to your door'
+      ? 'Delivery · 25–40 mins'
       : linkCtx.tableCode
-        ? `🍽️ ${formatTableLabel(linkCtx.tableCode)} · Tap to order to your table`
-        : '🍽️ Dine-in Menu · Scan table NFC / QR to order'
+        ? `Dine-in · ${formatTableLabel(linkCtx.tableCode)}`
+        : 'Dine-in & Takeaway · 15–25 mins'
 
   return (
     <main className="menu-page">
       <section className="hero">
-        <div className="container">
-          <p className="hero__eyebrow">{eyebrow}</p>
-          <h1 className="hero__title">{RESTAURANT_NAME}</h1>
-          <p className="hero__subtitle">{RESTAURANT_TAGLINE}</p>
+        <div className="container hero__inner">
+          <div className="hero__content">
+            <div className="hero__meta">
+              <span className="hero__status">
+                <span className="hero__status-dot" aria-hidden="true" />
+                Kitchen open
+              </span>
+              <span className="hero__sep" aria-hidden="true">·</span>
+              <span>{serviceLabel}</span>
+            </div>
+            <h1 className="hero__title">{RESTAURANT_NAME}</h1>
+            <p className="hero__subtitle">{RESTAURANT_TAGLINE}</p>
+          </div>
         </div>
       </section>
 
@@ -91,10 +100,12 @@ export function MenuPage() {
       <section className="container menu-section">
         <div className="menu-filter-bar">
           <div className="menu-search">
-            <span className="menu-search__icon" aria-hidden="true">🔍</span>
+            <span className="menu-search__icon" aria-hidden="true">
+              <SearchIcon size={16} />
+            </span>
             <input
               type="search"
-              placeholder="Search dishes, proteins, drinks…"
+              placeholder="Search dishes, sides, or drinks..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search menu"
@@ -117,48 +128,46 @@ export function MenuPage() {
               className={`chip chip--sm ${tagFilter === 'all' ? 'is-active' : ''}`}
               onClick={() => setTagFilter('all')}
             >
-              All
+              All dishes
             </button>
             <button
               type="button"
               className={`chip chip--sm ${tagFilter === 'spicy' ? 'is-active' : ''}`}
               onClick={() => setTagFilter(tagFilter === 'spicy' ? 'all' : 'spicy')}
             >
-              🌶️ Spicy
+              Spicy
             </button>
             <button
               type="button"
               className={`chip chip--sm ${tagFilter === 'veg' ? 'is-active' : ''}`}
               onClick={() => setTagFilter(tagFilter === 'veg' ? 'all' : 'veg')}
             >
-              🥬 Veg / Meat-Free
+              Meat-free
             </button>
           </div>
         </div>
 
         {!isSupabaseConfigured ? (
           <EmptyState
-            icon="⚙️"
-            title="Almost there"
-            message="Add your Supabase URL and anon key to the .env file, then restart the dev server."
+            title="Database connection required"
+            message="Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment configuration."
           />
         ) : loading ? (
           <MenuSkeleton />
         ) : error ? (
           <EmptyState
-            icon="⚠️"
-            title="We couldn't load the menu"
+            title="Unable to load menu"
             message={error}
             action={
               <button className="btn btn--primary" onClick={reload}>
-                Try again
+                Retry
               </button>
             }
           />
         ) : visible.length === 0 ? (
           <EmptyState
             title="No matching dishes"
-            message="Try clearing your search or switching to another category tab."
+            message="Try adjusting your search or switching to another category."
             action={
               (query || tagFilter !== 'all') && (
                 <button
@@ -168,7 +177,7 @@ export function MenuPage() {
                     setTagFilter('all')
                   }}
                 >
-                  Clear filters
+                  Reset filters
                 </button>
               )
             }
