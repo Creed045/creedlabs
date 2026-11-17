@@ -22,7 +22,9 @@ function CustomerLayout() {
   return (
     <>
       <Navbar />
-      <Outlet />
+      <div key={pathname} className="page-transition">
+        <Outlet />
+      </div>
       <CartDrawer />
     </>
   )

@@ -10,6 +10,10 @@ import './styles/menu.css'
 import './styles/cart.css'
 import './styles/checkout.css'
 import './styles/staff.css'
+import './styles/animations.css'
+import { installRipple } from './lib/ripple'
+
+installRipple()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

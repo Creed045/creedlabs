@@ -41,7 +41,7 @@ export function Navbar() {
           </Link>
           <button className="navbar__cart" onClick={openCart} aria-label={`Open cart, ${count} items`}>
             <CartIcon />
-            {count > 0 && <span className="navbar__badge">{count}</span>}
+            {count > 0 && <span key={count} className="navbar__badge">{count}</span>}
           </button>
         </nav>
       </div>
