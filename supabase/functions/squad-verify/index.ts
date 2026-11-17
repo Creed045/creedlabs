@@ -57,7 +57,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
 
-  const squadSecret = Deno.env.get('SQUAD_SECRET_KEY')?.trim()
+  const envKeys = Object.keys(Deno.env.toObject())
+  const squadKeyName = envKeys.find(
+    (k) => k.toLowerCase() === 'squad_secret_key' || k.toLowerCase().includes('squad_secret'),
+  )
+  const squadSecret = squadKeyName ? Deno.env.get(squadKeyName)?.trim() : undefined
   if (!squadSecret) {
     return json({ ok: false, error: 'Server is missing SQUAD_SECRET_KEY secret' }, 500)
   }
