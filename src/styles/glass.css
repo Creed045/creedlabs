@@ -1,0 +1,308 @@
+/* =========================================================
+   Liquid Glass buttons — inspired by Apple's iOS / visionOS
+   glass controls.
+
+   Layers on every glass control:
+     background  → translucent tint + backdrop blur/saturation
+     box-shadow  → inner top highlight, inner bottom shade, soft drop shadow
+     ::before    → specular light that follows the pointer (--mx / --my)
+     ::after     → glossy top lens reflection + refractive rim
+   Interaction (driven by src/lib/ripple.ts):
+     .is-liquid-press   → squish + brighter light bloom
+     .is-liquid-release → elastic jelly settle
+   ========================================================= */
+
+:root {
+  --glass-blur: 18px;
+  --glass-sat: 180%;
+  --glass-rim: rgb(255 255 255 / 0.55);
+  --glass-rim-soft: rgb(255 255 255 / 0.18);
+  --glass-shade: rgb(0 0 0 / 0.08);
+  --glass-drop: 0 6px 18px rgb(28 25 23 / 0.12), 0 1px 3px rgb(28 25 23 / 0.08);
+  --glass-drop-hover: 0 14px 34px rgb(28 25 23 / 0.18), 0 2px 6px rgb(28 25 23 / 0.1);
+  --glass-light: rgb(255 255 255 / 0.55);
+  --glass-neutral: rgb(255 255 255 / 0.55);
+  --liquid-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --liquid-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme='dark'] {
+  --glass-rim: rgb(255 255 255 / 0.28);
+  --glass-rim-soft: rgb(255 255 255 / 0.08);
+  --glass-shade: rgb(0 0 0 / 0.35);
+  --glass-drop: 0 8px 22px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.4);
+  --glass-drop-hover: 0 16px 38px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.45);
+  --glass-light: rgb(255 255 255 / 0.32);
+  --glass-neutral: rgb(255 255 255 / 0.07);
+}
+
+/* ---------- Shared glass anatomy ---------- */
+
+:where(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+       .kitchen-nav__btn, .spice-btn, .allergy-chip) {
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  --mx: 50%;
+  --my: 0%;
+  --tx: 0;
+  --ty: 0;
+}
+
+:where(.btn, .icon-btn, .tabs__tab, .chip, .pay-option, .kitchen-nav__btn,
+       .spice-btn, .allergy-chip) {
+  position: relative;
+}
+
+/* Specular light that follows the pointer */
+:is(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+    .kitchen-nav__btn, .spice-btn, .allergy-chip)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(
+    120% 160% at var(--mx) var(--my),
+    var(--glass-light) 0%,
+    rgb(255 255 255 / 0.12) 28%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.35s var(--liquid-ease);
+}
+
+/* Glossy lens reflection on the top half + refractive rim */
+.btn::after,
+.navbar__cart::after,
+.cart-bar::after,
+.icon-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.32) 0%,
+    rgb(255 255 255 / 0.08) 42%,
+    transparent 52%,
+    transparent 78%,
+    rgb(255 255 255 / 0.1) 100%
+  );
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.btn--text::after,
+.btn--text::before,
+.icon-btn::after { opacity: 0; }
+
+@media (hover: hover) {
+  :is(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+      .kitchen-nav__btn, .spice-btn, .allergy-chip):hover:not(:disabled)::before {
+    opacity: 1;
+  }
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-rim-soft);
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 -1px 0 var(--glass-shade),
+    var(--glass-drop);
+  transition:
+    transform 0.5s var(--liquid-spring),
+    box-shadow 0.4s var(--liquid-ease),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.2s ease,
+    filter 0.25s ease;
+}
+
+.btn--primary {
+  background: rgb(228 87 46 / 0.86);
+  border-color: rgb(255 255 255 / 0.28);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 -2px 6px rgb(120 30 0 / 0.25),
+    0 8px 22px rgb(228 87 46 / 0.35),
+    0 1px 3px rgb(28 25 23 / 0.15);
+}
+.btn--primary:hover:not(:disabled) { background: rgb(228 87 46 / 0.92); }
+
+.btn--ghost {
+  background: var(--glass-neutral);
+  border-color: var(--glass-rim-soft);
+}
+.btn--ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--glass-neutral) 70%, white 30%); }
+:root[data-theme='dark'] .btn--ghost:hover:not(:disabled) { background: rgb(255 255 255 / 0.12); }
+
+.btn--danger { background: color-mix(in srgb, var(--bad-soft) 75%, transparent); }
+.btn--ok { background: color-mix(in srgb, var(--ok-soft) 75%, transparent); }
+
+.btn--text {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+@media (hover: hover) {
+  .btn:hover:not(:disabled):not(.btn--text) {
+    transform: translateY(-2px) scale(1.015);
+    box-shadow:
+      inset 0 1px 0 var(--glass-rim),
+      inset 0 -1px 0 var(--glass-shade),
+      var(--glass-drop-hover);
+  }
+  .btn--primary:hover:not(:disabled) {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      inset 0 -2px 6px rgb(120 30 0 / 0.25),
+      0 14px 32px rgb(228 87 46 / 0.42),
+      0 2px 6px rgb(28 25 23 / 0.15);
+  }
+}
+
+/* Kitchen action colours keep their meaning, gain glass */
+.btn--go-preparing,
+.btn--go-preparing-amber,
+.btn--warn { background: rgb(245 158 11 / 0.88); }
+.btn--go-ready { background: rgb(34 197 94 / 0.88); }
+.btn--go-delivered { background: color-mix(in srgb, var(--dark-bar-bg) 85%, transparent); }
+.btn--go-preparing-warn { background: rgb(185 28 28 / 0.9) !important; }
+
+/* ---------- Pills: tabs, chips, filters ---------- */
+
+.tabs__tab,
+.chip,
+.spice-btn,
+.allergy-chip,
+.kitchen-nav__btn {
+  backdrop-filter: blur(12px) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(12px) saturate(var(--glass-sat));
+  box-shadow: inset 0 1px 0 var(--glass-rim-soft), 0 1px 2px rgb(28 25 23 / 0.06);
+  transition:
+    transform 0.5s var(--liquid-spring),
+    background-color 0.3s var(--liquid-ease),
+    border-color 0.3s var(--liquid-ease),
+    color 0.3s ease,
+    box-shadow 0.3s var(--liquid-ease);
+}
+
+.tabs__tab.is-active,
+.chip.is-active,
+.kitchen-nav__btn.is-active {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -1px 0 rgb(0 0 0 / 0.15),
+    0 6px 16px rgb(28 25 23 / 0.18);
+}
+
+/* ---------- Floating glass: navbar cart + sticky cart bar ---------- */
+
+.navbar__cart {
+  background: rgb(28 25 23 / 0.62);
+  backdrop-filter: blur(20px) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(20px) saturate(var(--glass-sat));
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--glass-drop);
+  transition: transform 0.5s var(--liquid-spring), box-shadow 0.4s var(--liquid-ease), background-color 0.25s;
+}
+.navbar__cart:hover { background: rgb(28 25 23 / 0.74); }
+
+.cart-bar {
+  background: rgb(28 25 23 / 0.62);
+  backdrop-filter: blur(24px) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-sat));
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -1px 0 rgb(0 0 0 / 0.3),
+    0 18px 40px rgb(0 0 0 / 0.28);
+}
+
+.icon-btn {
+  transition: transform 0.5s var(--liquid-spring), background-color 0.25s ease;
+}
+.icon-btn:hover { background: var(--glass-neutral); box-shadow: inset 0 1px 0 var(--glass-rim-soft); }
+
+/* Payment option cards */
+.pay-option {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter: blur(16px) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(16px) saturate(var(--glass-sat));
+  box-shadow: inset 0 1px 0 var(--glass-rim-soft), var(--glass-drop);
+  transition: transform 0.5s var(--liquid-spring), box-shadow 0.4s var(--liquid-ease), border-color 0.25s;
+}
+
+/* ---------- Liquid press & release ---------- */
+
+:is(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+    .kitchen-dish, .kitchen-nav__btn, .spice-btn, .allergy-chip, .theme-toggle).is-liquid-press:not(:disabled) {
+  transform: scale(0.94) !important;
+  filter: brightness(1.08) saturate(1.1);
+  transition:
+    transform 0.18s var(--liquid-ease),
+    filter 0.18s ease,
+    box-shadow 0.18s ease !important;
+}
+
+/* Light blooms under the finger while pressed */
+:is(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+    .kitchen-nav__btn, .spice-btn, .allergy-chip).is-liquid-press::before {
+  opacity: 1;
+  background: radial-gradient(
+    90% 140% at var(--mx) var(--my),
+    rgb(255 255 255 / 0.7) 0%,
+    rgb(255 255 255 / 0.22) 35%,
+    transparent 70%
+  );
+  transition: opacity 0.12s ease;
+}
+
+:is(.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar,
+    .kitchen-dish, .kitchen-nav__btn, .spice-btn, .allergy-chip, .theme-toggle).is-liquid-release {
+  animation: liquid-settle 0.62s var(--liquid-ease) both;
+}
+
+/* Jelly: overshoot wide, then tall, then rest — like iOS glass */
+@keyframes liquid-settle {
+  0%   { transform: scale(0.94); }
+  35%  { transform: scale(1.06, 0.95); }
+  55%  { transform: scale(0.98, 1.03); }
+  75%  { transform: scale(1.01, 0.99); }
+  100% { transform: scale(1); }
+}
+
+/* Keyboard users get the same squish */
+:is(.btn, .icon-btn, .tabs__tab, .chip):active:not(:disabled):not(.is-liquid-press) {
+  transform: scale(0.95);
+}
+
+/* ---------- Glass navbar ---------- */
+
+.navbar {
+  background: color-mix(in srgb, var(--nav-bg) 70%, transparent);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  box-shadow: inset 0 -1px 0 var(--glass-rim-soft);
+}
+
+/* ---------- Fallback when backdrop-filter is unsupported ---------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .btn--primary { background: var(--brand); }
+  .navbar__cart,
+  .cart-bar { background: rgb(28 25 23 / 0.94); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-liquid-release { animation: none; }
+}

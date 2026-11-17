@@ -11,6 +11,7 @@ import './styles/cart.css'
 import './styles/checkout.css'
 import './styles/staff.css'
 import './styles/animations.css'
+import './styles/glass.css'
 import { installRipple } from './lib/ripple'
 
 installRipple()
