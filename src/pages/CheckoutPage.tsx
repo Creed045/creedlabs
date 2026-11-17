@@ -247,14 +247,24 @@ export function CheckoutPage() {
     })
 
     if (result.outcome === 'cancelled') {
+      // On mobile or when closing receipt, check with the server before assuming cancellation
+      setStep('processing')
+      const { ok } = await verifyPayment(order.id, reference)
+      if (ok) {
+        setPlaced({
+          ...order,
+          paid: true,
+          splitShares: order.splitShares?.map((s) => ({ ...s, paidOnline: true })),
+        })
+        setStep('done')
+        return
+      }
       setRetryMessage('The payment window was closed before payment completed.')
-      setLastReference(null)
       setStep('retry')
       return
     }
     if (result.outcome === 'error') {
       setRetryMessage(result.message)
-      setLastReference(null)
       setStep('retry')
       return
     }
