@@ -1,11 +1,7 @@
 // Supabase Edge Function: squad-webhook
 // -----------------------------------------------------------------------------
 // Receives Squad by GTCO payment notifications (Event: "charge_successful").
-// Validates the `x-squad-encrypted-body` header using HMAC-SHA512 of the raw
-// request body keyed by SQUAD_SECRET_KEY (as documented at docs.squadco.com).
-// Ignores invalid requests, verifies the kobo amount against public.orders,
-// and marks the matching order paid. Safe to receive the same event twice.
-// Deploy with `--no-verify-jwt`.
+// Supports both full-order payments and multi-person split-bill share payments.
 // -----------------------------------------------------------------------------
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -58,11 +54,22 @@ function timingSafeEqualHex(a: string, b: string): boolean {
   return diff === 0
 }
 
-/** Extracts a UUID from references formatted as `SQ-<32hex>-<timestamp>`. */
 function extractOrderUuidFromRef(ref: string): string | null {
   const m = ref.match(/^SQ-([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})-/i)
   if (!m) return null
   return `${m[1]}-${m[2]}-${m[3]}-${m[4]}-${m[5]}`.toLowerCase()
+}
+
+function parseSplitProgress(paymentRef: string | null): { paidKobo: number; refs: string[] } {
+  if (!paymentRef) return { paidKobo: 0, refs: [] }
+  const m = paymentRef.match(/^PAID_KOBO:(\d+)\|REFS:(.+)$/)
+  if (!m) return { paidKobo: 0, refs: [] }
+  const paidKobo = parseInt(m[1], 10) || 0
+  const refs = m[2]
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return { paidKobo, refs }
 }
 
 Deno.serve(async (req) => {
@@ -78,7 +85,6 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
-  // Fallback: If not in environment variables, check secure app_secrets table in DB
   if (!squadSecret) {
     const { data: dbSec } = await admin
       .from('app_secrets')
@@ -130,7 +136,6 @@ Deno.serve(async (req) => {
   const txRef = String(payload.TransactionRef ?? body.transaction_ref ?? '').trim()
   const txStatus = String(body.transaction_status ?? '').toLowerCase()
 
-  // Acknowledge non-charge events cleanly so Squad doesn't retry them
   if (eventName !== 'charge_successful' || txStatus !== 'success' || !txRef) {
     return json({ ok: true, ignored: true, event: eventName })
   }
@@ -158,21 +163,52 @@ Deno.serve(async (req) => {
   }
 
   if (!order) {
-    // Return 200 so Squad doesn't infinitely retry an unknown reference
     return json({ ok: true, ignored: true, reason: 'Order not found for reference' })
   }
 
-  // 2. Idempotency check: safe to receive the same event twice
   if (order.payment_status === 'paid') {
     return json({ ok: true, status: 'paid', idempotent: true, order_id: order.id })
   }
 
-  // 3. Verify amount in kobo matches the order total stored in public.orders
   const expectedKobo = Math.round(Number(order.total) * 100)
   const paidKobo = Math.round(Number(body.amount ?? 0))
   const currency = String(body.currency ?? body.currency_code ?? 'NGN').toUpperCase()
+  const isSplitShare = /-P\d+/i.test(txRef) || (paidKobo > 0 && paidKobo < expectedKobo)
 
-  if (currency !== 'NGN' || paidKobo !== expectedKobo) {
+  if (currency !== 'NGN') {
+    return json({ ok: false, error: `Invalid currency ${currency}` }, 400)
+  }
+
+  if (isSplitShare) {
+    const progress = parseSplitProgress(order.payment_reference)
+    const alreadyCounted = progress.refs.includes(txRef)
+    const nextRefs = alreadyCounted ? progress.refs : [...progress.refs, txRef]
+    const nextPaidKobo = alreadyCounted ? progress.paidKobo : progress.paidKobo + paidKobo
+
+    if (nextPaidKobo + 100 >= expectedKobo) {
+      await admin
+        .from('orders')
+        .update({
+          payment_method: 'squad',
+          payment_status: 'paid',
+          payment_reference: nextRefs.join(', ').slice(0, 240),
+        })
+        .eq('id', order.id)
+
+      return json({ ok: true, status: 'paid', order_id: order.id, reference: txRef })
+    } else {
+      await admin
+        .from('orders')
+        .update({
+          payment_reference: `PAID_KOBO:${nextPaidKobo}|REFS:${nextRefs.join(',')}`,
+        })
+        .eq('id', order.id)
+
+      return json({ ok: true, status: 'partial', paid_kobo: nextPaidKobo, expected_kobo: expectedKobo, order_id: order.id })
+    }
+  }
+
+  if (paidKobo < expectedKobo) {
     return json(
       {
         ok: false,
@@ -182,10 +218,9 @@ Deno.serve(async (req) => {
     )
   }
 
-  // 4. Mark order paid
   const { error: updateErr } = await admin
     .from('orders')
-    .update({ payment_status: 'paid', payment_reference: txRef })
+    .update({ payment_method: 'squad', payment_status: 'paid', payment_reference: txRef })
     .eq('id', order.id)
 
   if (updateErr) {

@@ -28,6 +28,7 @@ export interface SplitShare {
   amount: number
   itemsLabel?: string
   paidOnline?: boolean
+  reference?: string
 }
 
 interface PlacedOrder {
@@ -271,31 +272,87 @@ export function CheckoutPage() {
     await confirmPayment(order, result.reference)
   }
 
-  async function payIndividualShareWithSquad(shareIndex: number) {
-    if (!placed?.splitShares) return
-    const share = placed.splitShares[shareIndex]
+  async function payIndividualShareWithSquad(shareIndex: number, targetOrder?: PlacedOrder) {
+    const activeOrder = targetOrder ?? placed
+    if (!activeOrder?.splitShares) return
+    const share = activeOrder.splitShares[shareIndex]
     if (!share || share.amount <= 0 || share.paidOnline) return
 
     setError(null)
     setPayingShareIdx(shareIndex)
     try {
-      const reference = `${makeSquadReference(placed.id)}-P${shareIndex + 1}`
+      const reference = share.reference || makeSquadReference(activeOrder.id, shareIndex + 1)
+      // Persist the payer's dedicated Squad reference on their share
+      const sharesWithRef = activeOrder.splitShares.map((s, idx) =>
+        idx === shareIndex ? { ...s, reference } : s,
+      )
+      const orderWithRef: PlacedOrder = { ...activeOrder, splitShares: sharesWithRef }
+      setPlaced(orderWithRef)
+
       const result = await payWithSquad({
-        email: `order-${placed.id.slice(0, 8).toLowerCase()}-p${shareIndex + 1}@creedlabs.kitchen`,
+        email: `order-${activeOrder.id.slice(0, 8).toLowerCase()}-p${shareIndex + 1}@creedlabs.kitchen`,
         amountNaira: share.amount,
         reference,
-        orderId: placed.id,
-        name: share.name,
-        })
+        orderId: activeOrder.id,
+        name: `${share.name} (Account #${shareIndex + 1})`,
+      })
 
-      if (result.outcome === 'success') {
+      if (result.outcome === 'error') {
+        setError(result.message)
+        return
+      }
+
+      const finalRef = result.outcome === 'success' ? result.reference : reference
+      const verifyRes = await verifyPayment(activeOrder.id, finalRef, share.amount)
+
+      if (verifyRes.ok) {
+        const updatedShares = sharesWithRef.map((s, idx) =>
+          idx === shareIndex ? { ...s, paidOnline: true, reference: finalRef } : s,
+        )
+        const allPaid =
+          verifyRes.status === 'paid' ||
+          updatedShares.filter((s) => s.amount > 0).every((s) => s.paidOnline)
+        const updatedOrder: PlacedOrder = {
+          ...orderWithRef,
+          paid: allPaid || orderWithRef.paid,
+          splitShares: updatedShares,
+        }
+        setPlaced(updatedOrder)
+
+        // Automatically open the next person's Squad account number if another guest still needs to pay
+        const nextIdx = updatedShares.findIndex((s, idx) => idx > shareIndex && s.amount > 0 && !s.paidOnline)
+        if (nextIdx !== -1) {
+          setTimeout(() => {
+            void payIndividualShareWithSquad(nextIdx, updatedOrder)
+          }, 350)
+        }
+      } else if (result.outcome === 'success') {
+        setError(`Could not confirm ${share.name}'s payment yet: ${verifyRes.error ?? 'Pending bank confirmation'}`)
+      }
+    } finally {
+      setPayingShareIdx(null)
+    }
+  }
+
+  async function recheckSharePayment(shareIndex: number) {
+    if (!placed?.splitShares) return
+    const share = placed.splitShares[shareIndex]
+    if (!share?.reference || share.paidOnline) return
+
+    setError(null)
+    setPayingShareIdx(shareIndex)
+    try {
+      const verifyRes = await verifyPayment(placed.id, share.reference, share.amount)
+      if (verifyRes.ok) {
         const updatedShares = placed.splitShares.map((s, idx) =>
           idx === shareIndex ? { ...s, paidOnline: true } : s,
         )
-        const allPaid = updatedShares.filter((s) => s.amount > 0).every((s) => s.paidOnline)
+        const allPaid =
+          verifyRes.status === 'paid' ||
+          updatedShares.filter((s) => s.amount > 0).every((s) => s.paidOnline)
         setPlaced({ ...placed, paid: allPaid || placed.paid, splitShares: updatedShares })
-      } else if (result.outcome === 'error') {
-        setError(result.message)
+      } else {
+        setError(`Account #${shareIndex + 1} (${share.name}): ${verifyRes.error ?? 'Payment not received yet'}`)
       }
     } finally {
       setPayingShareIdx(null)
@@ -346,6 +403,14 @@ export function CheckoutPage() {
         return
       }
 
+      const preparedShares =
+        splitMode !== 'single'
+          ? splitShares.map((s, idx) => ({
+              ...s,
+              reference: makeSquadReference(id, idx + 1),
+            }))
+          : undefined
+
       const order: PlacedOrder = {
         id,
         items: fresh.lines.map(({ id: itemId, name, price, quantity }) => ({ id: itemId, name, price, quantity })),
@@ -353,13 +418,24 @@ export function CheckoutPage() {
         method,
         paid: false,
         details: finalDetails,
-        splitShares: splitMode !== 'single' ? splitShares : undefined,
+        splitShares: preparedShares,
       }
       setPlaced(order)
       clear()
 
-      if (method === 'cash') setStep('done')
-      else await runSquad(order, initialRef)
+      if (method === 'cash') {
+        setStep('done')
+      } else if (preparedShares && preparedShares.length >= 2) {
+        // Multi-person split on Squad: go to the split payment dashboard and launch Account #1 first,
+        // so each person gets their own separate Squad transfer account number for their share!
+        setStep('done')
+        const firstActiveIdx = preparedShares.findIndex((s) => s.amount > 0)
+        if (firstActiveIdx !== -1) {
+          void payIndividualShareWithSquad(firstActiveIdx, order)
+        }
+      } else {
+        await runSquad(order, initialRef)
+      }
     } finally {
       setBusy(null)
     }
@@ -684,12 +760,14 @@ export function CheckoutPage() {
                     ? 'Placing order…'
                     : splitMode === 'single'
                       ? 'Pay now with Squad'
-                      : 'Pay with Squad (Online)'}
+                      : `Pay with Squad (${payerCount} separate Squad accounts)`}
                 </strong>
                 <small>
-                  {isDelivery
-                    ? 'Pay online now with Squad (Card, Bank Transfer or USSD) for delivery'
-                    : 'Pay online now with Squad (Card, Bank Transfer or USSD) at your table'}
+                  {splitMode !== 'single'
+                    ? `Generates ${payerCount} separate Squad transfer account numbers — one for each person's exact share`
+                    : isDelivery
+                      ? 'Pay online now with Squad (Transfer, Card or USSD) for delivery'
+                      : 'Pay online now with Squad (Transfer, Card or USSD) at your table'}
                 </small>
               </span>
             </button>
@@ -790,7 +868,18 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <LiveOrderTracker orderId={placed.id} />
+          <LiveOrderTracker
+            orderId={placed.id}
+            onPaid={() => {
+              if (!placed.paid) {
+                setPlaced({
+                  ...placed,
+                  paid: true,
+                  splitShares: placed.splitShares?.map((s) => ({ ...s, paidOnline: true })),
+                })
+              }
+            }}
+          />
 
           <OrderItemsList items={placed.items} />
           <div className="total-row total-row--border">
@@ -801,15 +890,19 @@ export function CheckoutPage() {
           {/* Individual share payments when 2+ people split the bill */}
           {placed.splitShares && placed.splitShares.length > 0 && (
             <div className="split-done-box">
-              <h3>Split Bill Breakdown ({placed.splitShares.length} guests)</h3>
+              <h3>
+                Squad Split Accounts ({placed.splitShares.length} guests · {placed.splitShares.length} separate account numbers)
+              </h3>
               <p className="muted small">
-                Each guest can pay their share online below or settle at the table with card, transfer, or cash.
+                Each guest gets their own dedicated Squad transfer account number for their exact share. Tap a guest below to open their Squad account number:
               </p>
               <div className="split-done-list">
                 {placed.splitShares.map((s, idx) => (
                   <div key={idx} className="split-done-row">
                     <div>
-                      <strong>{s.name}</strong>
+                      <strong>
+                        Account #{idx + 1} · {s.name}
+                      </strong>
                       {s.itemsLabel && <small className="muted block">{s.itemsLabel}</small>}
                     </div>
                     <div className="split-done-row__actions">
@@ -817,16 +910,28 @@ export function CheckoutPage() {
                       {s.paidOnline || placed.paid ? (
                         <span className="badge badge--paid">Paid</span>
                       ) : isSquadConfigured() && s.amount > 0 ? (
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--xs"
-                          disabled={payingShareIdx !== null}
-                          onClick={() => payIndividualShareWithSquad(idx)}
-                        >
-                          {payingShareIdx === idx ? 'Opening...' : 'Pay share'}
-                        </button>
+                        <>
+                          {s.reference && (
+                            <button
+                              type="button"
+                              className="btn btn--ghost btn--xs"
+                              disabled={payingShareIdx !== null}
+                              onClick={() => recheckSharePayment(idx)}
+                            >
+                              Verify
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn--primary btn--xs"
+                            disabled={payingShareIdx !== null}
+                            onClick={() => payIndividualShareWithSquad(idx)}
+                          >
+                            {payingShareIdx === idx ? 'Opening...' : `Get Account #${idx + 1}`}
+                          </button>
+                        </>
                       ) : (
-                        <span className="badge badge--cash">{isDelivery ? "Pay on delivery" : "Pay at table"}</span>
+                        <span className="badge badge--cash">{isDelivery ? 'Pay on delivery' : 'Pay at table'}</span>
                       )}
                     </div>
                   </div>
@@ -919,18 +1024,20 @@ const LIVE_STEPS: { key: OrderStatus; label: string; sub: string }[] = [
   { key: 'delivered', label: 'Served', sub: 'Enjoy your meal!' },
 ]
 
-function LiveOrderTracker({ orderId }: { orderId: string }) {
+function LiveOrderTracker({ orderId, onPaid }: { orderId: string; onPaid?: () => void }) {
   const [status, setStatus] = useState<OrderStatus>('new')
 
   useEffect(() => {
     let active = true
     supabase
       .from('order_tracking')
-      .select('status')
+      .select('status, payment_status')
       .eq('id', orderId)
       .maybeSingle()
       .then(({ data }) => {
-        if (active && data?.status) setStatus(data.status as OrderStatus)
+        if (!active || !data) return
+        if (data.status) setStatus(data.status as OrderStatus)
+        if (data.payment_status === 'paid') onPaid?.()
       })
 
     const channel = supabase
@@ -939,10 +1046,13 @@ function LiveOrderTracker({ orderId }: { orderId: string }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'order_tracking', filter: `id=eq.${orderId}` },
         (payload) => {
-          const row = payload.new as { status?: OrderStatus } | undefined
+          const row = payload.new as { status?: OrderStatus; payment_status?: string } | undefined
           if (row?.status) {
             setStatus(row.status)
             if ('vibrate' in navigator) navigator.vibrate?.([150, 80, 150])
+          }
+          if (row?.payment_status === 'paid') {
+            onPaid?.()
           }
         },
       )
@@ -952,7 +1062,7 @@ function LiveOrderTracker({ orderId }: { orderId: string }) {
       active = false
       supabase.removeChannel(channel)
     }
-  }, [orderId])
+  }, [orderId, onPaid])
 
   const activeIdx = Math.max(
     0,

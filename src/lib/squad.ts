@@ -20,6 +20,7 @@ interface SquadInitOptions {
   currency_code: 'NGN' | 'USD'
   transaction_ref: string
   customer_name?: string
+  payment_channels?: ('transfer' | 'card' | 'ussd' | 'bank')[]
   pass_charge?: boolean
   metadata?: Record<string, unknown>
   onLoad?: () => void
@@ -72,10 +73,14 @@ export function isSquadConfigured(): boolean {
  * Embeds the 32-hex order UUID so both squad-verify and squad-webhook
  * can always correlate a payment attempt with the order.
  */
-export function makeSquadReference(orderId: string): string {
+export function makeSquadReference(orderId: string, payerNumber?: number): string {
   const hex = orderId.replace(/-/g, '').toLowerCase()
   const ts = Date.now().toString(36).toUpperCase()
-  return `SQ-${hex}-${ts}`
+  const rand = Math.random().toString(36).slice(2, 5).toUpperCase()
+  if (payerNumber != null) {
+    return `SQ-${hex}-${ts}${rand}-P${payerNumber}`
+  }
+  return `SQ-${hex}-${ts}${rand}`
 }
 
 export async function payWithSquad(params: {
@@ -119,6 +124,7 @@ export async function payWithSquad(params: {
         currency_code: CURRENCY.code, // 'NGN'
         transaction_ref: params.reference,
         customer_name: params.name,
+        payment_channels: ['transfer', 'card', 'ussd', 'bank'],
         pass_charge: false,
         metadata: {
           order_id: params.orderId,

@@ -66,9 +66,10 @@ function friendlyDbError(message: string): string {
 export async function verifyPayment(
   orderId: string,
   reference: string,
-): Promise<{ ok: boolean; error: string | null }> {
+  shareAmount?: number,
+): Promise<{ ok: boolean; status?: 'paid' | 'partial'; error: string | null }> {
   const { data, error } = await supabase.functions.invoke('squad-verify', {
-    body: { order_id: orderId, reference },
+    body: { order_id: orderId, reference, share_amount: shareAmount },
   })
   if (error) {
     let message = error.message
@@ -82,7 +83,9 @@ export async function verifyPayment(
     }
     return { ok: false, error: message }
   }
-  return data?.ok ? { ok: true, error: null } : { ok: false, error: data?.error ?? 'Verification failed' }
+  return data?.ok
+    ? { ok: true, status: (data.status as 'paid' | 'partial') ?? 'paid', error: null }
+    : { ok: false, error: data?.error ?? 'Verification failed' }
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<string | null> {
