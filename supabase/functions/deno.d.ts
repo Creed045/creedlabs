@@ -1,17 +1,14 @@
-// Ambient types so VS Code's built-in TypeScript server & tsc understand
-// Supabase Edge Function (Deno) globals and the npm: specifier.
+// Ambient types so VS Code's TypeScript server and `tsc` recognize
+// Supabase Edge Function (Deno) globals and the `npm:` import specifier.
 
 declare module 'npm:@supabase/supabase-js@2' {
-  export * from '@supabase/supabase-js'
+  export const createClient: typeof import('@supabase/supabase-js').createClient
 }
 
-declare namespace Deno {
-  export interface Env {
+declare const Deno: {
+  env: {
     get(key: string): string | undefined
     toObject(): Record<string, string>
   }
-  export const env: Env
-  export function serve(
-    handler: (req: Request) => Response | Promise<Response>,
-  ): void
+  serve(handler: (req: Request) => Response | Promise<Response>): void
 }
