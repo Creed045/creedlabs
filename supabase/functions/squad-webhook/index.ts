@@ -72,7 +72,7 @@ function parseSplitProgress(paymentRef: string | null): { paidKobo: number; refs
   return { paidKobo, refs }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405)
 
   const envKeys = Object.keys(Deno.env.toObject())
