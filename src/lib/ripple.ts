@@ -1,11 +1,11 @@
-// Apple "Liquid Glass"-style interaction engine.
-// One delegated listener set for the whole app:
-//  • tracks the pointer so a specular highlight follows your finger/cursor
-//  • on press, adds a soft light bloom + elastic squish
-//  • on release, plays a jelly "settle" animation like iOS glass controls
+// Optimized Apple "Liquid Glass" interaction engine.
+// Single delegated listener set for the entire app:
+//  • tracks pointer coordinates (--mx / --my) via requestAnimationFrame
+//  • applies GPU-composited .is-liquid-press on pointerdown
+//  • plays .is-liquid-release elastic spring settle on pointerup
 
 const SELECTOR =
-  '.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .pay-option, .cart-bar, .kitchen-dish, .kitchen-nav__btn, .spice-btn, .allergy-chip, .theme-toggle'
+  '.btn, .icon-btn, .navbar__cart, .tabs__tab, .chip, .dish__mod-pill, .waiter-trigger, .theme-toggle, .pay-option, .cart-bar, .kitchen-dish, .kitchen-nav__btn, .status-btn, .spice-btn, .allergy-chip, .stepper'
 
 let installed = false
 
@@ -17,13 +17,11 @@ function findTarget(e: Event): HTMLElement | null {
 
 function setPointerVars(el: HTMLElement, clientX: number, clientY: number) {
   const r = el.getBoundingClientRect()
+  if (r.width === 0 || r.height === 0) return
   const x = ((clientX - r.left) / r.width) * 100
   const y = ((clientY - r.top) / r.height) * 100
   el.style.setProperty('--mx', `${x.toFixed(1)}%`)
   el.style.setProperty('--my', `${y.toFixed(1)}%`)
-  // Subtle tilt toward the pointer (−1…1)
-  el.style.setProperty('--tx', ((x - 50) / 50).toFixed(3))
-  el.style.setProperty('--ty', ((y - 50) / 50).toFixed(3))
 }
 
 export function installRipple() {
@@ -38,6 +36,7 @@ export function installRipple() {
   document.addEventListener(
     'pointermove',
     (e) => {
+      if (e.pointerType === 'touch' && !pressed) return
       const el = pressed ?? findTarget(e)
       if (!el) return
       pending = { el, x: e.clientX, y: e.clientY }
@@ -72,12 +71,10 @@ export function installRipple() {
     pressed = null
     if (!el) return
     el.classList.remove('is-liquid-press')
-    // Restart the settle animation even on rapid taps
-    void el.offsetWidth
     el.classList.add('is-liquid-release')
     const done = () => el.classList.remove('is-liquid-release')
     el.addEventListener('animationend', done, { once: true })
-    setTimeout(done, 700)
+    setTimeout(done, 520)
   }
 
   document.addEventListener('pointerup', release, { passive: true })

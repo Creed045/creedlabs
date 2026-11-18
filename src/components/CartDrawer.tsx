@@ -56,7 +56,7 @@ export function CartDrawer() {
         {lines.length === 0 ? (
           <div className="drawer__body">
             <EmptyState
-              title="Your bag is empty"
+              title="Your cart is empty"
               message="Select dishes, sides, or drinks from the menu to begin your order."
               action={
                 <button className="btn btn--primary" onClick={closeCart}>

@@ -39,9 +39,8 @@ export function Navbar() {
             <LockIcon size={14} />
             <span className="navbar__staff-label">Staff</span>
           </Link>
-          <button className="navbar__cart" onClick={openCart} aria-label={`Open order bag, ${count} items`}>
-            <CartIcon size={18} />
-            <span className="navbar__cart-label">Bag</span>
+          <button className="navbar__cart" onClick={openCart} aria-label={`Open cart, ${count} items`}>
+            <CartIcon size={19} />
             {count > 0 && <span key={count} className="navbar__badge">{count}</span>}
           </button>
         </nav>

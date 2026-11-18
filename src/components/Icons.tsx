@@ -20,9 +20,9 @@ function base({ size = 18, ...rest }: IconProps): SVGProps<SVGSVGElement> {
 
 export const CartIcon = (p: IconProps) => (
   <svg {...base(p)}>
-    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-    <path d="M3 6h18" />
-    <path d="M16 10a4 4 0 0 1-8 0" />
+    <circle cx="9" cy="21" r="1" />
+    <circle cx="20" cy="21" r="1" />
+    <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
   </svg>
 )
 

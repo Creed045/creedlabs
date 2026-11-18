@@ -37,17 +37,14 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
         {showCategory && <span className="dish__category-tag">{item.category}</span>}
       </div>
       <div className="dish__body">
-        <div className="dish__header">
-          <h3 className="dish__name">{item.name}</h3>
-          <span className="dish__price">{formatPrice(item.price)}</span>
-        </div>
+        <h3 className="dish__name">{item.name}</h3>
         <p className="dish__desc">{item.description}</p>
 
         {item.available && (
           <div className="dish__mods-wrap" aria-label={`Customize ${item.name}`}>
             {groups.map((g) => (
               <div key={g.label} className="dish__mod-group">
-                <span className="dish__mod-label">{g.label}</span>
+                <span className="dish__mod-label">{g.label}:</span>
                 <div className="dish__mods">
                   {g.options.map((option) => (
                     <button
@@ -66,20 +63,21 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
         )}
 
         <div className="dish__footer">
+          <span className="dish__price">{formatPrice(item.price)}</span>
           {!item.available ? (
-            <button className="btn btn--ghost btn--sm btn--block" disabled>
-              Currently unavailable
+            <button className="btn btn--ghost btn--sm" disabled>
+              Unavailable
             </button>
           ) : qty === 0 ? (
-            <button className="btn btn--primary btn--sm btn--block" onClick={handleAdd}>
-              <PlusIcon size={15} /> Add to order
+            <button className="btn btn--primary btn--sm dish__add-btn" onClick={handleAdd}>
+              <PlusIcon size={16} /> Add
             </button>
           ) : (
-            <div className="stepper stepper--full" aria-label={`${item.name} quantity`}>
+            <div className="stepper" aria-label={`${item.name} quantity`}>
               <button onClick={() => setQuantity(item.id, qty - 1)} aria-label="Decrease">
                 <MinusIcon size={15} />
               </button>
-              <span>{qty} in bag</span>
+              <span>{qty}</span>
               <button onClick={handleAdd} aria-label="Increase">
                 <PlusIcon size={15} />
               </button>
