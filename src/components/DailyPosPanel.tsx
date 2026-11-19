@@ -3,12 +3,14 @@ import {
   formatClock,
   formatCountdown,
   formatDayLabel,
+  formatTime12h,
   shiftDayKey,
   useBusinessDay,
-  useMidnightCountdown,
+  useTargetCountdown,
 } from '../lib/businessDay'
 import { formatPrice, RESTAURANT_NAME } from '../lib/config'
 import { downloadDayCsv, summariseDay, TENDER_LABELS, tenderOf, useDayOrders, type Tender } from '../lib/pos'
+import { useRestaurantHours } from '../lib/restaurantHours'
 import { isTableOrder, ORDER_STATUSES, shortOrderId } from '../lib/types'
 import { EmptyState } from './EmptyState'
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, DownloadIcon, PrinterIcon } from './Icons'
@@ -16,18 +18,39 @@ import { LiveDot } from './LiveDot'
 
 const TENDER_ORDER: Tender[] = ['squad-paid', 'cash-settled', 'squad-pending', 'cash-open', 'squad-failed']
 
-function MidnightCountdown() {
-  const left = useMidnightCountdown()
+function OperatingCountdown({
+  openingTime,
+  closingTime,
+  hoursEnabled,
+  isOpen,
+}: {
+  openingTime: string
+  closingTime: string
+  hoursEnabled: boolean
+  isOpen: boolean
+}) {
+  const target = hoursEnabled ? (isOpen ? closingTime : openingTime) : null
+  const left = useTargetCountdown(target)
+  const label = !hoursEnabled
+    ? 'Resets at 00:00'
+    : isOpen
+      ? `Closes at ${formatTime12h(closingTime)}`
+      : `Opens at ${formatTime12h(openingTime)}`
+
   return (
-    <span className="pos-countdown" title="All daily totals restart at 00:00 (WAT)">
+    <span
+      className={`pos-countdown ${hoursEnabled && !isOpen ? 'is-closed' : ''}`}
+      title="Follows the restaurant's configured opening & closing hours (WAT)"
+    >
       <ClockIcon size={14} />
-      Day closes at 00:00 · <span className="mono">{formatCountdown(left)}</span>
+      {label} · <span className="mono">{formatCountdown(left)}</span>
     </span>
   )
 }
 
 export function DailyPosPanel() {
   const todayKey = useBusinessDay()
+  const { openingTime, closingTime, hoursEnabled, isOpen } = useRestaurantHours()
   // null = "follow today": the view rolls over to the new day automatically at 00:00.
   const [picked, setPicked] = useState<string | null>(null)
   const viewKey = picked ?? todayKey
@@ -110,7 +133,12 @@ export function DailyPosPanel() {
         <div className="pos-toolbar__right">
           {isToday ? (
             <>
-              <MidnightCountdown />
+              <OperatingCountdown
+                openingTime={openingTime}
+                closingTime={closingTime}
+                hoursEnabled={hoursEnabled}
+                isOpen={isOpen}
+              />
               <LiveDot connected={connected} />
             </>
           ) : (
@@ -131,7 +159,7 @@ export function DailyPosPanel() {
             <span className="pos-head__eyebrow">{isToday ? 'Live business day' : 'End-of-day report'}</span>
             <h2 className="pos-head__title">{formatDayLabel(viewKey)}</h2>
             <p className="muted small">
-              {RESTAURANT_NAME} · 00:00 – 23:59 WAT
+              {RESTAURANT_NAME} · {hoursEnabled ? `${openingTime} – ${closingTime} WAT` : '00:00 – 23:59 WAT'}
               {s.firstOrderAt && s.lastOrderAt
                 ? ` · First ticket ${formatClock(s.firstOrderAt)}, last ${formatClock(s.lastOrderAt)}`
                 : ''}

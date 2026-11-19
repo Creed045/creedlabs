@@ -172,12 +172,28 @@ export function useBusinessDay(): string {
   return key
 }
 
-/** Milliseconds left until 00:00, ticking once per second. */
-export function useMidnightCountdown(): number {
-  const [left, setLeft] = useState(() => msUntilNextDay())
+/** Milliseconds left until `hhmm` (or `00:00` if omitted) in BUSINESS_TIMEZONE, ticking once per second. */
+export function msUntilBusinessTime(hhmm: string, now = new Date()): number {
+  const mins = parseTimeMinutes(hhmm)
+  const todayKey = dayKeyOf(now)
+  const todayTarget = dayStart(todayKey).getTime() + mins * 60_000
+  if (todayTarget > now.getTime()) {
+    return todayTarget - now.getTime()
+  }
+  const tomorrowTarget = dayStart(shiftDayKey(todayKey, 1)).getTime() + mins * 60_000
+  return Math.max(0, tomorrowTarget - now.getTime())
+}
+
+/** Milliseconds left until a target time (`hhmm` or midnight if null), ticking once per second. */
+export function useTargetCountdown(targetHHMM: string | null): number {
+  const calc = (hhmm: string | null) =>
+    hhmm ? msUntilBusinessTime(hhmm) : msUntilNextDay()
+  const [left, setLeft] = useState(() => calc(targetHHMM))
   useEffect(() => {
-    const id = setInterval(() => setLeft(msUntilNextDay()), 1000)
+    const tick = () => setLeft(calc(targetHHMM))
+    tick()
+    const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [targetHHMM])
   return left
 }
