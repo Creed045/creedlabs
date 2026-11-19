@@ -135,17 +135,17 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
 
   const { callWaiterEnabled, setCallWaiterEnabled } = useCallWaiterSetting()
   const { openingTime, closingTime, hoursEnabled, isOpen, saveOperatingHours } = useRestaurantHours()
-  const [draftOpen, setDraftOpen] = useState(openingTime)
-  const [draftClose, setDraftClose] = useState(closingTime)
-  const [draftEnforce, setDraftEnforce] = useState(hoursEnabled)
+  const [draftHours, setDraftHours] = useState<{
+    openingTime: string
+    closingTime: string
+    hoursEnabled: boolean
+  } | null>(null)
   const [hoursSaving, setHoursSaving] = useState(false)
   const [hoursMsg, setHoursMsg] = useState<string | null>(null)
 
-  useEffect(() => {
-    setDraftOpen(openingTime)
-    setDraftClose(closingTime)
-    setDraftEnforce(hoursEnabled)
-  }, [openingTime, closingTime, hoursEnabled])
+  const draftOpen = draftHours?.openingTime ?? openingTime
+  const draftClose = draftHours?.closingTime ?? closingTime
+  const draftEnforce = draftHours?.hoursEnabled ?? hoursEnabled
 
   const handleSaveHours = async (e: FormEvent) => {
     e.preventDefault()
@@ -157,6 +157,7 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
       hoursEnabled: draftEnforce,
     })
     setHoursSaving(false)
+    if (!saveErr) setDraftHours(null)
     setHoursMsg(saveErr ? saveErr : 'Hours saved')
     if (!saveErr) {
       setTimeout(() => setHoursMsg((m) => (m === 'Hours saved' ? null : m)), 2500)
@@ -274,7 +275,9 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
               <input
                 type="time"
                 value={draftOpen}
-                onChange={(e) => setDraftOpen(e.target.value)}
+                onChange={(e) =>
+                  setDraftHours({ openingTime: e.target.value, closingTime: draftClose, hoursEnabled: draftEnforce })
+                }
                 required
               />
             </label>
@@ -283,7 +286,9 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
               <input
                 type="time"
                 value={draftClose}
-                onChange={(e) => setDraftClose(e.target.value)}
+                onChange={(e) =>
+                  setDraftHours({ openingTime: draftOpen, closingTime: e.target.value, hoursEnabled: draftEnforce })
+                }
                 required
               />
             </label>
@@ -293,7 +298,9 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
               <input
                 type="checkbox"
                 checked={draftEnforce}
-                onChange={(e) => setDraftEnforce(e.target.checked)}
+                onChange={(e) =>
+                  setDraftHours({ openingTime: draftOpen, closingTime: draftClose, hoursEnabled: e.target.checked })
+                }
               />
               <span className="switch" aria-hidden="true" />
               <span>Enforce</span>
