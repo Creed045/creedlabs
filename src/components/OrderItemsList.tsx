@@ -7,7 +7,10 @@ export function OrderItemsList({ items, showPrices = true }: { items: OrderItem[
       {items.map((it, i) => (
         <li key={`${it.id}-${i}`}>
           <span className="order-items__qty">{it.quantity}×</span>
-          <span className="order-items__name">{it.name}</span>
+          <span className="order-items__name">
+            {it.name}
+            {it.modifier && <small className="order-items__mod"> · {it.modifier}</small>}
+          </span>
           {showPrices && <span className="order-items__price">{formatPrice(Number(it.price) * it.quantity)}</span>}
         </li>
       ))}

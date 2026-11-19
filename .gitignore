@@ -26,3 +26,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local skills bundle and graphify
+all-my-skills/
+.agents/
+.claude/
+graphify-out/
+.graphifyignore
+CLAUDE.md

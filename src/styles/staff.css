@@ -879,8 +879,31 @@
   color: var(--brand);
 }
 
+.ticket__item-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .ticket__item-name {
   color: var(--ink);
+}
+
+.ticket__item-mod {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.order-items__mod {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .ticket__notes {

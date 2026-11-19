@@ -4,11 +4,13 @@
    ========================================================= */
 
 :root {
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring: cubic-bezier(0.25, 1, 0.5, 1);
   --dur-fast: 0.12s;
-  --dur: 0.18s;
-  --dur-slow: 0.28s;
+  --dur: 0.2s;
+  --dur-slow: 0.32s;
 }
 
 html { scroll-behavior: smooth; }

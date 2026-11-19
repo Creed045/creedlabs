@@ -13,6 +13,12 @@ export const CURRENCY = {
 
 export const CATEGORIES = ['Starters', 'Mains', 'Proteins', 'Drinks', 'Desserts'] as const
 
+/**
+ * The restaurant's own clock. Daily totals and the POS day roll over at 00:00 in
+ * this timezone, regardless of where the admin's device is.
+ */
+export const BUSINESS_TIMEZONE = 'Africa/Lagos'
+
 const formatter = new Intl.NumberFormat(CURRENCY.locale, {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,

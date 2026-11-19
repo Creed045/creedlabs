@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { DailyPosPanel } from '../components/DailyPosPanel'
 import { EmptyState } from '../components/EmptyState'
 import { FoodImage } from '../components/FoodImage'
 import { CheckIcon, CloseIcon, ExternalIcon, PlusIcon, QrIcon, TrashIcon } from '../components/Icons'
@@ -25,8 +26,9 @@ import { useMenu } from '../lib/useMenu'
 import { useAuth } from '../lib/auth'
 import { useCallWaiterSetting, useLiveWaiterCalls } from '../lib/waiter'
 import { playChime, vibrate } from '../lib/alert'
+import { dayKeyOf, useBusinessDay } from '../lib/businessDay'
 
-type Tab = 'orders' | 'menu' | 'links' | 'staff'
+type Tab = 'orders' | 'pos' | 'menu' | 'links' | 'staff'
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('orders')
@@ -43,6 +45,9 @@ export function AdminPage() {
           <button role="tab" aria-selected={tab === 'orders'} className={tab === 'orders' ? 'is-active' : ''} onClick={() => setTab('orders')}>
             Orders
           </button>
+          <button role="tab" aria-selected={tab === 'pos'} className={tab === 'pos' ? 'is-active' : ''} onClick={() => setTab('pos')}>
+            Daily POS
+          </button>
           <button role="tab" aria-selected={tab === 'menu'} className={tab === 'menu' ? 'is-active' : ''} onClick={() => setTab('menu')}>
             Menu Catalog
           </button>
@@ -56,7 +61,9 @@ export function AdminPage() {
       </div>
       <main className="staff-main">
         {tab === 'orders' ? (
-          <OrdersPanel />
+          <OrdersPanel onOpenPos={() => setTab('pos')} />
+        ) : tab === 'pos' ? (
+          <DailyPosPanel />
         ) : tab === 'menu' ? (
           <MenuPanel />
         ) : tab === 'links' ? (
@@ -73,19 +80,16 @@ export function AdminPage() {
 // Orders
 // ---------------------------------------------------------------------------
 
-function computeDailyStats(orders: Order[]) {
-  const now = new Date()
-  const yyyy = now.getFullYear()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
-  const todayPrefix = `${yyyy}-${mm}-${dd}`
-
-  const todayOrders = orders.filter((o) => o.created_at.startsWith(todayPrefix))
+function computeDailyStats(orders: Order[], todayKey: string) {
+  // Bucket by the restaurant's own calendar day (WAT), not the device's or UTC.
+  const todayOrders = orders.filter((o) => dayKeyOf(o.created_at) === todayKey)
   const revenue = todayOrders.reduce((sum, o) => sum + Number(o.total), 0)
   const paidOnline = todayOrders
     .filter((o) => o.payment_status === 'paid')
     .reduce((sum, o) => sum + Number(o.total), 0)
   const activeCount = todayOrders.filter((o) => o.status !== 'delivered').length
+  const avgOrderValue = todayOrders.length > 0 ? Math.round(revenue / todayOrders.length) : 0
+  const paidRate = todayOrders.length > 0 ? Math.round((todayOrders.filter((o) => o.payment_status === 'paid').length / todayOrders.length) * 100) : 0
 
   const dishCounts = new Map<string, number>()
   todayOrders.forEach((o) => {
@@ -101,11 +105,14 @@ function computeDailyStats(orders: Order[]) {
     activeCount,
     revenue,
     paidOnline,
+    avgOrderValue,
+    paidRate,
     topDishes,
   }
 }
 
-function OrdersPanel() {
+function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
+  const todayKey = useBusinessDay()
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const [err, setErr] = useState<string | null>(null)
@@ -131,7 +138,7 @@ function OrdersPanel() {
     vibrate()
   })
 
-  const stats = useMemo(() => computeDailyStats(orders), [orders])
+  const stats = useMemo(() => computeDailyStats(orders, todayKey), [orders, todayKey])
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: orders.length }
     orders.forEach((o) => (c[o.status] = (c[o.status] ?? 0) + 1))
@@ -175,15 +182,22 @@ function OrdersPanel() {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-card__label">Gross Revenue (Today)</span>
+          <span className="stat-card__label">Gross Revenue (since 00:00)</span>
           <strong className="stat-card__value">{formatPrice(stats.revenue)}</strong>
-          <span className="muted small">Paid online: {formatPrice(stats.paidOnline)}</span>
+          <span className="muted small">
+            Paid online: {formatPrice(stats.paidOnline)} ({stats.paidRate}%)
+          </span>
+          <button type="button" className="btn btn--text btn--xs stat-card__link" onClick={onOpenPos}>
+            Open Daily POS report
+          </button>
         </div>
 
         <div className="stat-card">
-          <span className="stat-card__label">Orders Today</span>
+          <span className="stat-card__label">Orders &amp; Average Ticket</span>
           <strong className="stat-card__value">{stats.todayCount}</strong>
-          <span className="muted small">{stats.activeCount} active in kitchen</span>
+          <span className="muted small">
+            {stats.activeCount} active · Avg {formatPrice(stats.avgOrderValue)}
+          </span>
         </div>
 
         <div className="stat-card">

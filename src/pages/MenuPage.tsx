@@ -3,10 +3,11 @@ import { useLocation } from 'react-router-dom'
 import { CartBar } from '../components/CartBar'
 import { CategoryTabs } from '../components/CategoryTabs'
 import { EmptyState } from '../components/EmptyState'
-import { CloseIcon, SearchIcon } from '../components/Icons'
+import { CloseIcon, PlusIcon, SearchIcon } from '../components/Icons'
 import { MenuItemCard } from '../components/MenuItemCard'
 import { MenuSkeleton } from '../components/MenuSkeleton'
-import { CATEGORIES, RESTAURANT_NAME, RESTAURANT_TAGLINE } from '../lib/config'
+import { useCart } from '../lib/cart'
+import { CATEGORIES, formatPrice, RESTAURANT_NAME, RESTAURANT_TAGLINE } from '../lib/config'
 import { formatTableLabel, syncLinkContextFromUrl } from '../lib/orderContext'
 import { isSupabaseConfigured } from '../lib/supabase'
 import type { MenuFilter, MenuItem } from '../lib/types'
@@ -26,11 +27,21 @@ function isVegDish(item: MenuItem): boolean {
 
 export function MenuPage() {
   const { items, loading, error, reload } = useMenu()
+  const { add, quantityOf } = useCart()
   const [active, setActive] = useState<MenuFilter>('best')
   const [query, setQuery] = useState('')
   const [tagFilter, setTagFilter] = useState<TagFilter>('all')
   const { pathname, search } = useLocation()
   const linkCtx = syncLinkContextFromUrl(pathname, search)
+
+  const signatureDish = useMemo(
+    () =>
+      items.find((i) => i.available && /jollof/i.test(i.name)) ??
+      items.find((i) => i.available && i.best_seller) ??
+      items.find((i) => i.available) ??
+      null,
+    [items],
+  )
 
   const counts = useMemo(() => {
     const c = {
@@ -72,6 +83,8 @@ export function MenuPage() {
         ? `Dine-in · ${formatTableLabel(linkCtx.tableCode)}`
         : 'Dine-in & Takeaway · 15–25 mins'
 
+  const showEditorialLead = active === 'best' && !query.trim() && tagFilter === 'all' && visible.length >= 3
+
   return (
     <main className="menu-page">
       <section className="hero">
@@ -87,7 +100,33 @@ export function MenuPage() {
             </div>
             <h1 className="hero__title">{RESTAURANT_NAME}</h1>
             <p className="hero__subtitle">{RESTAURANT_TAGLINE}</p>
+            <div className="hero__pillars" aria-label="Service highlights">
+              <span className="hero__pillar">Fire-wood smoky prep</span>
+              <span className="hero__pillar">Instant table &amp; delivery tickets</span>
+              <span className="hero__pillar">Multi-account Squad bill split</span>
+            </div>
           </div>
+
+          {signatureDish && (
+            <aside className="hero__spotlight" aria-label="Chef's signature recommendation">
+              <div className="hero__spotlight-head">
+                <span className="hero__spotlight-tag">Tonight&apos;s Signature</span>
+                <span className="hero__spotlight-price">{formatPrice(signatureDish.price)}</span>
+              </div>
+              <strong className="hero__spotlight-name">{signatureDish.name}</strong>
+              <p className="hero__spotlight-desc">{signatureDish.description}</p>
+              <button
+                type="button"
+                className="btn btn--primary btn--sm hero__spotlight-btn"
+                onClick={() => add(signatureDish)}
+              >
+                <PlusIcon size={15} />
+                {quantityOf(signatureDish.id) > 0
+                  ? `In order (${quantityOf(signatureDish.id)}) · Add another`
+                  : 'Add to order'}
+              </button>
+            </aside>
+          )}
         </div>
       </section>
 
@@ -105,7 +144,7 @@ export function MenuPage() {
             </span>
             <input
               type="search"
-              placeholder="Search dishes, sides, or drinks..."
+              placeholder="Search Jollof, Suya, Egusi, Chapman..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search menu"
@@ -135,14 +174,14 @@ export function MenuPage() {
               className={`chip chip--sm ${tagFilter === 'spicy' ? 'is-active' : ''}`}
               onClick={() => setTagFilter(tagFilter === 'spicy' ? 'all' : 'spicy')}
             >
-              Spicy
+              Pepper-forward
             </button>
             <button
               type="button"
               className={`chip chip--sm ${tagFilter === 'veg' ? 'is-active' : ''}`}
               onClick={() => setTagFilter(tagFilter === 'veg' ? 'all' : 'veg')}
             >
-              Meat-free
+              Meat-free &amp; drinks
             </button>
           </div>
         </div>
@@ -167,7 +206,7 @@ export function MenuPage() {
         ) : visible.length === 0 ? (
           <EmptyState
             title="No matching dishes"
-            message="Try adjusting your search or switching to another category."
+            message="Try clearing your search or switching to another section of the kitchen."
             action={
               (query || tagFilter !== 'all') && (
                 <button
@@ -183,11 +222,12 @@ export function MenuPage() {
             }
           />
         ) : (
-          <div className="menu-grid">
-            {visible.map((item) => (
+          <div className={`menu-grid ${showEditorialLead ? 'menu-grid--editorial' : ''}`}>
+            {visible.map((item, idx) => (
               <MenuItemCard
                 key={item.id}
                 item={item}
+                featured={showEditorialLead && idx === 0}
                 showCategory={active === 'best' || active === 'all' || query.trim().length > 0}
               />
             ))}

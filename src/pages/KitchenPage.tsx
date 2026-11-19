@@ -246,7 +246,10 @@ export function KitchenPage() {
                             {o.items.map((it, i) => (
                               <li key={`${it.id}-${i}`}>
                                 <span className="ticket__qty">{it.quantity}×</span>
-                                <span className="ticket__item-name">{it.name}</span>
+                                <div className="ticket__item-detail">
+                                  <span className="ticket__item-name">{it.name}</span>
+                                  {it.modifier && <span className="ticket__item-mod">{it.modifier}</span>}
+                                </div>
                               </li>
                             ))}
                           </ul>

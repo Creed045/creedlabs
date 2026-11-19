@@ -1,0 +1,358 @@
+/* =========================================================
+   Daily POS / End-of-day (Z-report) panel — admin only
+   Dense, utilitarian, tabular numbers. Prints cleanly.
+   ========================================================= */
+
+.pos { display: grid; gap: 16px; }
+
+.pos-rollover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.pos-rollover__actions { display: inline-flex; gap: 6px; }
+
+.stat-card__link {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* ---------- Toolbar ---------- */
+
+.pos-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pos-datebar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.pos-datebar__input {
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  outline: none;
+}
+
+.pos-datebar .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.pos-toolbar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pos-toolbar__right .badge {
+  background: var(--surface-muted);
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+.pos-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.pos-countdown .mono { font-size: 0.8rem; }
+
+/* ---------- Report header ---------- */
+
+.pos-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pos-head__eyebrow {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.pos-head__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.2vw, 2.1rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 2px 0 4px;
+}
+
+/* ---------- KPIs ---------- */
+
+.pos-kpis {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+@media (min-width: 720px) {
+  .pos-kpis { grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr)); }
+}
+
+.pos-kpi {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 13px 15px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.pos-kpi--lead {
+  grid-column: 1 / -1;
+  background: var(--dark-bar-bg);
+  border-color: var(--dark-bar-bg);
+  color: #f8fafc;
+}
+
+@media (min-width: 720px) {
+  .pos-kpi--lead { grid-column: auto; }
+}
+
+.pos-kpi__label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pos-kpi--lead .pos-kpi__label,
+.pos-kpi--lead .pos-kpi__sub { color: #94a3b8; }
+
+.pos-kpi__value {
+  font-size: 1.32rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-kpi--lead .pos-kpi__value { font-size: 1.7rem; color: #fff; }
+
+.pos-kpi__sub { font-size: 0.76rem; color: var(--muted); }
+
+/* ---------- Cards & tables ---------- */
+
+.pos-split {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 980px) {
+  .pos-split { grid-template-columns: 1fr 1fr; }
+}
+
+.pos-card {
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.pos-split .pos-card { margin-bottom: 0; }
+
+.pos-card__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.pos-card__title--spaced { margin-top: 18px; }
+
+.pos-table-scroll { overflow-x: auto; }
+
+.pos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.pos-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.pos-table tbody tr:last-child td { border-bottom: none; }
+
+.pos-table th:first-child,
+.pos-table td:first-child { padding-left: 0; }
+
+.pos-table th:last-child,
+.pos-table td:last-child { padding-right: 0; }
+
+.pos-table .num { text-align: right; white-space: nowrap; }
+
+.pos-table tfoot td {
+  border-top: 1.5px solid var(--ink);
+  border-bottom: none;
+  font-weight: 700;
+  padding-top: 10px;
+}
+
+.pos-table tr.is-muted td { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+
+.pos-table--ledger td { white-space: nowrap; }
+
+.pos-tender {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 2px;
+  vertical-align: 1px;
+}
+
+.pos-tender--squad-paid { background: var(--brand); }
+.pos-tender--cash-settled { background: var(--ok); }
+.pos-tender--squad-pending { background: color-mix(in srgb, var(--brand) 35%, var(--surface-muted)); }
+.pos-tender--cash-open { background: var(--warn); }
+.pos-tender--squad-failed { background: var(--bad); }
+
+/* ---------- Channel split ---------- */
+
+.pos-channel__bar {
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-muted);
+  gap: 2px;
+}
+
+.pos-channel__seg.is-dine,
+.pos-channel__legend i.is-dine { background: var(--ink); }
+.pos-channel__seg.is-delivery,
+.pos-channel__legend i.is-delivery { background: var(--brand); }
+
+.pos-channel__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-channel__legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+/* ---------- Hourly bars ---------- */
+
+.pos-hours { display: grid; gap: 4px; }
+
+.pos-hours__row {
+  display: grid;
+  grid-template-columns: 46px 1fr 96px;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-hours__label { color: var(--muted); font-size: 0.74rem; }
+
+.pos-hours__track {
+  height: 10px;
+  border-radius: 3px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.pos-hours__fill {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: 3px;
+  transform-origin: left center;
+  transition: transform 0.4s var(--ease-out, ease-out);
+}
+
+.pos-hours__value {
+  text-align: right;
+  font-size: 0.74rem;
+  color: var(--ink-2);
+}
+
+.pos-footnote { margin-top: 4px; max-width: 80ch; }
+
+/* ---------- Print: only the Z-report ---------- */
+
+@media print {
+  body.is-printing-pos * { visibility: hidden !important; }
+  body.is-printing-pos .pos-print,
+  body.is-printing-pos .pos-print * { visibility: visible !important; }
+  body.is-printing-pos .pos-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0 8mm;
+    color: #000;
+  }
+  body.is-printing-pos .pos-kpi,
+  body.is-printing-pos .pos-card {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #bbb !important;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  body.is-printing-pos .pos-kpi__value,
+  body.is-printing-pos .pos-kpi__label,
+  body.is-printing-pos .pos-kpi__sub { color: #000 !important; }
+  body.is-printing-pos .pos-table-scroll { overflow: visible; }
+  body.is-printing-pos .pos-hours__fill { background: #333 !important; }
+}

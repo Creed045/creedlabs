@@ -5,7 +5,15 @@ import { customizationsForDish, type MenuItem } from '../lib/types'
 import { FoodImage } from './FoodImage'
 import { MinusIcon, PlusIcon } from './Icons'
 
-export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; showCategory?: boolean }) {
+export function MenuItemCard({
+  item,
+  showCategory = false,
+  featured = false,
+}: {
+  item: MenuItem
+  showCategory?: boolean
+  featured?: boolean
+}) {
   const { add, quantityOf, modifierOf, setQuantity, setModifier } = useCart()
   const qty = quantityOf(item.id)
   const cartMod = modifierOf(item.id)
@@ -29,11 +37,19 @@ export function MenuItemCard({ item, showCategory = false }: { item: MenuItem; s
   }
 
   return (
-    <article className={`dish ${item.available ? '' : 'is-soldout'} ${qty > 0 ? 'is-in-cart' : ''}`}>
+    <article
+      className={`dish ${featured ? 'dish--featured' : ''} ${item.available ? '' : 'is-soldout'} ${
+        qty > 0 ? 'is-in-cart' : ''
+      }`}
+    >
       <div className="dish__media">
         <FoodImage src={item.image_url} alt={item.name} />
         {!item.available && <span className="dish__soldout">Sold out</span>}
-        {item.available && item.best_seller && <span className="dish__bestseller">Popular</span>}
+        {item.available && featured ? (
+          <span className="dish__bestseller dish__bestseller--signature">Chef&apos;s Signature</span>
+        ) : item.available && item.best_seller ? (
+          <span className="dish__bestseller">House Favourite</span>
+        ) : null}
         {showCategory && <span className="dish__category-tag">{item.category}</span>}
       </div>
       <div className="dish__body">
