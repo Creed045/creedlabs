@@ -50,6 +50,47 @@ export function businessHourOf(date: Date | string): number {
   return zonedParts(typeof date === 'string' ? new Date(date) : date).hour
 }
 
+/** Minutes since 00:00 (0–1439) on the restaurant clock. */
+export function businessMinutesOf(date: Date | string = new Date()): number {
+  const p = zonedParts(typeof date === 'string' ? new Date(date) : date)
+  return p.hour * 60 + p.minute
+}
+
+export function parseTimeMinutes(hhmm: string): number {
+  const [hStr, mStr] = hhmm.split(':')
+  const h = Number(hStr)
+  const m = Number(mStr)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0
+  return Math.max(0, Math.min(23, h)) * 60 + Math.max(0, Math.min(59, m))
+}
+
+/**
+ * Checks whether `nowMinutes` is inside [openingTime, closingTime).
+ * Supports both same-day schedules (e.g. 08:00 -> 23:00) and overnight schedules (e.g. 10:00 -> 02:00).
+ */
+export function isWithinOperatingHours(
+  openingTime: string,
+  closingTime: string,
+  nowMinutes = businessMinutesOf(),
+): boolean {
+  const open = parseTimeMinutes(openingTime)
+  const close = parseTimeMinutes(closingTime)
+  if (open === close) return true
+  if (open < close) {
+    return nowMinutes >= open && nowMinutes < close
+  }
+  return nowMinutes >= open || nowMinutes < close
+}
+
+export function formatTime12h(hhmm: string): string {
+  const mins = parseTimeMinutes(hhmm)
+  const h24 = Math.floor(mins / 60)
+  const m = mins % 60
+  const period = h24 >= 12 ? 'PM' : 'AM'
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`
+}
+
 /** Move a day key forward or back by whole days. */
 export function shiftDayKey(key: string, days: number): string {
   const [y, m, d] = key.split('-').map(Number)

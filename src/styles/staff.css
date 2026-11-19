@@ -311,6 +311,59 @@
   color: var(--ink-2);
 }
 
+.hours-card {
+  gap: 8px;
+}
+
+.hours-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hours-card__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hours-card__field {
+  display: grid;
+  gap: 3px;
+}
+
+.hours-card__field span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.hours-card__field input[type='time'] {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.hours-card__field input[type='time']:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.14);
+}
+
+.hours-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* ---------- Waiter Call Alerts ---------- */
 
 .waiter-alerts {

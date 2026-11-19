@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../lib/cart'
 import { formatPrice } from '../lib/config'
+import { formatTime12h } from '../lib/businessDay'
+import { useRestaurantHours } from '../lib/restaurantHours'
 import { customizationsForDish } from '../lib/types'
 import { EmptyState } from './EmptyState'
 import { FoodImage } from './FoodImage'
@@ -9,6 +11,7 @@ import { CloseIcon, MinusIcon, PlusIcon, TrashIcon } from './Icons'
 
 export function CartDrawer() {
   const { lines, total, count, isOpen, closeCart, setQuantity, setModifier, remove } = useCart()
+  const { openingTime, closingTime, hoursEnabled, isOpen: kitchenOpen } = useRestaurantHours()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -132,8 +135,19 @@ export function CartDrawer() {
                 <span>Total</span>
                 <strong>{formatPrice(total)}</strong>
               </div>
-              <button className="btn btn--primary btn--lg btn--block" onClick={goToCheckout}>
-                Checkout (Single or Split Bill)
+              {hoursEnabled && !kitchenOpen && (
+                <p className="alert alert--warn small" role="status">
+                  Kitchen is closed ({formatTime12h(openingTime)} – {formatTime12h(closingTime)} WAT).
+                </p>
+              )}
+              <button
+                className="btn btn--primary btn--lg btn--block"
+                onClick={goToCheckout}
+                disabled={hoursEnabled && !kitchenOpen}
+              >
+                {hoursEnabled && !kitchenOpen
+                  ? `Opens at ${formatTime12h(openingTime)}`
+                  : 'Checkout (Single or Split Bill)'}
               </button>
             </div>
           </>

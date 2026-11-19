@@ -8,7 +8,9 @@ import { MenuItemCard } from '../components/MenuItemCard'
 import { MenuSkeleton } from '../components/MenuSkeleton'
 import { useCart } from '../lib/cart'
 import { CATEGORIES, formatPrice, RESTAURANT_NAME, RESTAURANT_TAGLINE } from '../lib/config'
+import { formatTime12h } from '../lib/businessDay'
 import { formatTableLabel, syncLinkContextFromUrl } from '../lib/orderContext'
+import { useRestaurantHours } from '../lib/restaurantHours'
 import { isSupabaseConfigured } from '../lib/supabase'
 import type { MenuFilter, MenuItem } from '../lib/types'
 import { useMenu } from '../lib/useMenu'
@@ -27,6 +29,7 @@ function isVegDish(item: MenuItem): boolean {
 
 export function MenuPage() {
   const { items, loading, error, reload } = useMenu()
+  const { openingTime, closingTime, hoursEnabled, isOpen } = useRestaurantHours()
   const { add, quantityOf } = useCart()
   const [active, setActive] = useState<MenuFilter>('best')
   const [query, setQuery] = useState('')
@@ -92,9 +95,15 @@ export function MenuPage() {
           <div className="hero__content">
             <div className="hero__meta">
               <span className="hero__status">
-                <span className="hero__status-dot" aria-hidden="true" />
-                Kitchen open
+                <span className={`hero__status-dot ${isOpen ? '' : 'is-closed'}`} aria-hidden="true" />
+                {isOpen ? 'Kitchen open' : 'Kitchen closed'}
               </span>
+              {hoursEnabled && (
+                <>
+                  <span className="hero__sep" aria-hidden="true">·</span>
+                  <span>{formatTime12h(openingTime)} – {formatTime12h(closingTime)}</span>
+                </>
+              )}
               <span className="hero__sep" aria-hidden="true">·</span>
               <span>{serviceLabel}</span>
             </div>
@@ -137,6 +146,13 @@ export function MenuPage() {
       </div>
 
       <section className="container menu-section">
+        {hoursEnabled && !isOpen && (
+          <div className="alert alert--warn closed-banner" role="status">
+            <strong>Kitchen is currently closed.</strong> Ordering reopens at {formatTime12h(openingTime)} WAT
+            (open daily {formatTime12h(openingTime)} – {formatTime12h(closingTime)}).
+          </div>
+        )}
+
         <div className="menu-filter-bar">
           <div className="menu-search">
             <span className="menu-search__icon" aria-hidden="true">

@@ -6,7 +6,9 @@ import { OrderItemsList } from '../components/OrderItemsList'
 import { PaymentBadge } from '../components/PaymentBadge'
 import { useCart } from '../lib/cart'
 import { formatPrice } from '../lib/config'
+import { formatTime12h } from '../lib/businessDay'
 import { formatTableLabel, saveLinkContext, syncLinkContextFromUrl } from '../lib/orderContext'
+import { useRestaurantHours } from '../lib/restaurantHours'
 import { placeOrder, verifyPayment, type CustomerDetails } from '../lib/orders'
 import { isSquadConfigured, makeSquadReference, payWithSquad } from '../lib/squad'
 import { supabase } from '../lib/supabase'
@@ -91,6 +93,7 @@ async function refreshLines(lines: CartLine[]): Promise<{ lines: CartLine[]; tot
 
 export function CheckoutPage() {
   const { lines, total, clear, setQuantity, openCart } = useCart()
+  const { openingTime, closingTime, hoursEnabled, isOpen: kitchenOpen } = useRestaurantHours()
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
   const linkCtx = syncLinkContextFromUrl(pathname, search)
@@ -216,6 +219,11 @@ export function CheckoutPage() {
   const submitDetails = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (hoursEnabled && !kitchenOpen) {
+      return setError(
+        `Kitchen is currently closed. We're open ${formatTime12h(openingTime)} – ${formatTime12h(closingTime)} WAT.`,
+      )
+    }
     if (!customerName.trim()) return setError('Please enter your name.')
     if (isDelivery && deliveryAddress.trim().length < 5) {
       return setError('Please enter your delivery address.')
@@ -377,6 +385,11 @@ export function CheckoutPage() {
 
   async function choose(method: PaymentMethod) {
     setError(null)
+    if (hoursEnabled && !kitchenOpen) {
+      return setError(
+        `Kitchen is currently closed. We're open ${formatTime12h(openingTime)} – ${formatTime12h(closingTime)} WAT.`,
+      )
+    }
     if (splitMode === 'items' && splitShares.every((s) => s.amount === 0)) {
       return setError('Please assign at least one dish to a person.')
     }

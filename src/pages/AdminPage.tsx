@@ -26,7 +26,8 @@ import { useMenu } from '../lib/useMenu'
 import { useAuth } from '../lib/auth'
 import { useCallWaiterSetting, useLiveWaiterCalls } from '../lib/waiter'
 import { playChime, vibrate } from '../lib/alert'
-import { dayKeyOf, useBusinessDay } from '../lib/businessDay'
+import { dayKeyOf, formatTime12h, useBusinessDay } from '../lib/businessDay'
+import { useRestaurantHours } from '../lib/restaurantHours'
 
 type Tab = 'orders' | 'pos' | 'menu' | 'links' | 'staff'
 
@@ -133,6 +134,34 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
   })
 
   const { callWaiterEnabled, setCallWaiterEnabled } = useCallWaiterSetting()
+  const { openingTime, closingTime, hoursEnabled, isOpen, saveOperatingHours } = useRestaurantHours()
+  const [draftOpen, setDraftOpen] = useState(openingTime)
+  const [draftClose, setDraftClose] = useState(closingTime)
+  const [draftEnforce, setDraftEnforce] = useState(hoursEnabled)
+  const [hoursSaving, setHoursSaving] = useState(false)
+  const [hoursMsg, setHoursMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraftOpen(openingTime)
+    setDraftClose(closingTime)
+    setDraftEnforce(hoursEnabled)
+  }, [openingTime, closingTime, hoursEnabled])
+
+  const handleSaveHours = async (e: FormEvent) => {
+    e.preventDefault()
+    setHoursSaving(true)
+    setHoursMsg(null)
+    const saveErr = await saveOperatingHours({
+      openingTime: draftOpen,
+      closingTime: draftClose,
+      hoursEnabled: draftEnforce,
+    })
+    setHoursSaving(false)
+    setHoursMsg(saveErr ? saveErr : 'Hours saved')
+    if (!saveErr) {
+      setTimeout(() => setHoursMsg((m) => (m === 'Hours saved' ? null : m)), 2500)
+    }
+  }
   const { calls: waiterCalls, dismissCall } = useLiveWaiterCalls(() => {
     playChime()
     vibrate()
@@ -231,6 +260,58 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
           </label>
           <span className="muted small">Controls the "Service" button on dine-in menus</span>
         </div>
+
+        <form className="stat-card hours-card" onSubmit={handleSaveHours}>
+          <div className="hours-card__top">
+            <span className="stat-card__label">Operating Hours (WAT)</span>
+            <span className={`badge ${isOpen ? 'badge--paid' : 'badge--failed'}`}>
+              {isOpen ? 'Open now' : 'Closed now'}
+            </span>
+          </div>
+          <div className="hours-card__inputs">
+            <label className="hours-card__field">
+              <span>Opens</span>
+              <input
+                type="time"
+                value={draftOpen}
+                onChange={(e) => setDraftOpen(e.target.value)}
+                required
+              />
+            </label>
+            <label className="hours-card__field">
+              <span>Closes</span>
+              <input
+                type="time"
+                value={draftClose}
+                onChange={(e) => setDraftClose(e.target.value)}
+                required
+              />
+            </label>
+          </div>
+          <div className="hours-card__footer">
+            <label className="switch-row switch-row--compact">
+              <input
+                type="checkbox"
+                checked={draftEnforce}
+                onChange={(e) => setDraftEnforce(e.target.checked)}
+              />
+              <span className="switch" aria-hidden="true" />
+              <span>Enforce</span>
+            </label>
+            <button type="submit" className="btn btn--primary btn--xs" disabled={hoursSaving}>
+              {hoursSaving ? 'Saving...' : 'Save hours'}
+            </button>
+          </div>
+          {hoursMsg ? (
+            <span className="small text-ok">{hoursMsg}</span>
+          ) : (
+            <span className="muted small">
+              {draftEnforce
+                ? `${formatTime12h(draftOpen)} – ${formatTime12h(draftClose)}`
+                : 'Schedule check paused (always open)'}
+            </span>
+          )}
+        </form>
       </div>
 
       <div className="panel-toolbar">

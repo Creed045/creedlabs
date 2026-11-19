@@ -190,6 +190,15 @@
   box-shadow: 0 0 8px #3b82f6;
 }
 
+.hero__status-dot.is-closed {
+  background: var(--bad);
+  box-shadow: 0 0 8px var(--bad);
+}
+
+.closed-banner {
+  margin-bottom: 16px;
+}
+
 .hero__sep { opacity: 0.5; }
 
 .hero__title {

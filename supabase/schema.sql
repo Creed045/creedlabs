@@ -565,11 +565,14 @@ create trigger orders_sync_tracking
 create table if not exists public.restaurant_settings (
   id                  integer primary key default 1 check (id = 1),
   call_waiter_enabled boolean not null default true,
+  opening_time        text not null default '08:00',
+  closing_time        text not null default '23:00',
+  hours_enabled       boolean not null default true,
   updated_at          timestamptz not null default now()
 );
 
-insert into public.restaurant_settings (id, call_waiter_enabled)
-values (1, true)
+insert into public.restaurant_settings (id, call_waiter_enabled, opening_time, closing_time, hours_enabled)
+values (1, true, '08:00', '23:00', true)
 on conflict (id) do nothing;
 
 grant select on public.restaurant_settings to anon, authenticated;
