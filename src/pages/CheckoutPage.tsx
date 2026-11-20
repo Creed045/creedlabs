@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import '../styles/checkout.css'
 import { EmptyState } from '../components/EmptyState'
 import { ArrowLeftIcon, CardIcon, CashIcon, CheckIcon, MinusIcon, PlusIcon } from '../components/Icons'
 import { OrderItemsList } from '../components/OrderItemsList'

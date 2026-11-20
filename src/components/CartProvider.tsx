@@ -19,8 +19,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
+    } catch {
+      /* ignore quota / privacy mode write errors */
+    }
   }, [lines])
+
+  const openCart = useCallback(() => setIsOpen(true), [])
+  const closeCart = useCallback(() => setIsOpen(false), [])
 
   const add = useCallback((item: MenuItem, initialModifier?: string) => {
     setLines((prev) => {
@@ -70,24 +77,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => setLines([]), [])
 
   const value = useMemo<CartContextValue>(() => {
-    const count = lines.reduce((n, l) => n + l.quantity, 0)
-    const total = lines.reduce((sum, l) => sum + l.price * l.quantity, 0)
+    let count = 0
+    let total = 0
+    const byId = new Map<string, CartLine>()
+    for (const line of lines) {
+      count += line.quantity
+      total += line.price * line.quantity
+      byId.set(line.id, line)
+    }
     return {
       lines,
       count,
       total,
       isOpen,
-      openCart: () => setIsOpen(true),
-      closeCart: () => setIsOpen(false),
+      openCart,
+      closeCart,
       add,
       setQuantity,
       setModifier,
       remove,
       clear,
-      quantityOf: (id: string) => lines.find((l) => l.id === id)?.quantity ?? 0,
-      modifierOf: (id: string) => lines.find((l) => l.id === id)?.modifier ?? '',
+      quantityOf: (id: string) => byId.get(id)?.quantity ?? 0,
+      modifierOf: (id: string) => byId.get(id)?.modifier ?? '',
     }
-  }, [lines, isOpen, add, setQuantity, setModifier, remove, clear])
+  }, [lines, isOpen, openCart, closeCart, add, setQuantity, setModifier, remove, clear])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

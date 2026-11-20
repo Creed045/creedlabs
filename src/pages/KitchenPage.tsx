@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import '../styles/staff.css'
 import { FoodImage } from '../components/FoodImage'
 import { AlertIcon, BellIcon, CheckIcon, ClockIcon, CloseIcon } from '../components/Icons'
 import { LiveDot } from '../components/LiveDot'

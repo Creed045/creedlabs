@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import '../styles/pos.css'
 import {
   formatClock,
   formatCountdown,

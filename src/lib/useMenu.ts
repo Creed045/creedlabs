@@ -5,10 +5,12 @@ import type { MenuItem } from './types'
 
 const CATEGORY_ORDER = new Map<string, number>(CATEGORIES.map((c, idx) => [c, idx]))
 
+const MENU_COLUMNS = 'id, name, description, price, category, image_url, available, best_seller, created_at'
+
 async function queryMenu() {
   return supabase
     .from('menu_items')
-    .select('*')
+    .select(MENU_COLUMNS)
     .order('created_at', { ascending: true })
 }
 

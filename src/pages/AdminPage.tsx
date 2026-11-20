@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import '../styles/staff.css'
 import { DailyPosPanel } from '../components/DailyPosPanel'
 import { EmptyState } from '../components/EmptyState'
 import { FoodImage } from '../components/FoodImage'

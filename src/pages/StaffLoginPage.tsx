@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import '../styles/checkout.css'
 import { ArrowLeftIcon, LockIcon } from '../components/Icons'
 import { homeForRole, useAuth } from '../lib/auth'
 import { RESTAURANT_NAME } from '../lib/config'

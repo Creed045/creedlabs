@@ -800,3 +800,22 @@ $$;
 grant execute on function public.admin_list_staff() to authenticated;
 grant execute on function public.admin_create_staff(text, text, text) to authenticated;
 grant execute on function public.admin_update_staff(uuid, text, text, text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 12. EXTENSIONS, INDEXES & RPC PRIVILEGE HARDENING
+-- ---------------------------------------------------------------------
+
+create extension if not exists pg_trgm with schema extensions;
+create extension if not exists hypopg with schema extensions;
+create extension if not exists index_advisor with schema extensions cascade;
+
+create index if not exists restaurant_settings_signature_dish_id_idx
+  on public.restaurant_settings (signature_dish_id);
+
+create index if not exists orders_status_created_at_idx
+  on public.orders (status, created_at desc);
+
+revoke all on function public.sync_order_tracking() from public, anon, authenticated;
+revoke all on function public.admin_list_staff() from public, anon;
+revoke all on function public.admin_create_staff(text, text, text) from public, anon;
+revoke all on function public.admin_update_staff(uuid, text, text, text) from public, anon;
