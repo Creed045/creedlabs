@@ -164,7 +164,7 @@ export function MenuItemForm({ item, onClose, onSaved }: Props) {
             </label>
           </div>
 
-          {error && <p className="alert alert--error">{error}</p>}
+          {error && <p className="alert alert--error" role="alert">{error}</p>}
 
           <div className="modal__footer">
             <button type="button" className="btn btn--ghost" onClick={onClose}>

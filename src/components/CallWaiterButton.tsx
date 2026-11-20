@@ -101,7 +101,7 @@ export function CallWaiterButton() {
                       </button>
                     ))}
                   </div>
-                  {error && <p className="alert alert--error">{error}</p>}
+                  {error && <p className="alert alert--error" role="alert">{error}</p>}
                 </>
               )}
             </div>

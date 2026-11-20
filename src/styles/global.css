@@ -51,6 +51,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 68px);
+  scroll-padding-bottom: 92px;
   scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent;
 }
 
@@ -96,10 +98,13 @@ select,
 textarea {
   font: inherit;
   color: inherit;
+  touch-action: manipulation;
 }
 
-button {
+button,
+a {
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 a {
@@ -280,8 +285,36 @@ a {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  font-size: 15px;
+  font-size: 16px;
   transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  padding-right: 64px;
+}
+
+.password-field__toggle {
+  position: absolute;
+  right: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.password-field__toggle:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
 }
 
 .field textarea { resize: vertical; min-height: 68px; }

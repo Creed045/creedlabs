@@ -644,7 +644,7 @@
 .dish__mods {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 8px;
 }
 
 .dish__mod-pill {
@@ -736,10 +736,16 @@
   min-width: 0;
 }
 
+@media (max-width: 767px) {
+  .menu-search input {
+    font-size: 16px;
+  }
+}
+
 .menu-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .chip--sm {
@@ -858,6 +864,10 @@
 }
 
 .menu-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 4px;
   color: var(--ink-2);
   font-weight: 500;
   text-decoration: none;

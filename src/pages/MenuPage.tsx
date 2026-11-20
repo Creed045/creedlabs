@@ -157,6 +157,7 @@ export function MenuPage() {
                   src={signatureDish.image_url}
                   alt={signatureDish.name}
                   className="hero__spotlight-img"
+                  eager
                 />
               </div>
               <div className="hero__spotlight-info">

@@ -39,6 +39,7 @@ export function CartDrawer() {
         aria-modal="true"
         aria-label="Your cart"
         aria-hidden={!isOpen}
+        inert={!isOpen}
       >
         <div className="drawer__header">
           <div>

@@ -646,7 +646,7 @@ export function CheckoutPage() {
               </label>
             </div>
 
-            {error && <p className="alert alert--error">{error}</p>}
+            {error && <p className="alert alert--error" role="alert">{error}</p>}
 
             <button type="submit" className="btn btn--primary btn--lg btn--block">
               Continue to payment · {formatPrice(total)}
@@ -812,7 +812,7 @@ export function CheckoutPage() {
           {!isSquadConfigured() && (
             <p className="alert alert--info">Online payment is not configured yet (missing VITE_SQUAD_PUBLIC_KEY).</p>
           )}
-          {error && <p className="alert alert--error">{error}</p>}
+          {error && <p className="alert alert--error" role="alert">{error}</p>}
 
           <p className="muted small center">Your order is sent to the kitchen right after you choose a payment option.</p>
         </section>
@@ -959,7 +959,7 @@ export function CheckoutPage() {
             </div>
           )}
 
-          {error && <p className="alert alert--error">{error}</p>}
+          {error && <p className="alert alert--error" role="alert">{error}</p>}
 
           <p className="muted small center">
             {isTableOrder(placed.details.address)

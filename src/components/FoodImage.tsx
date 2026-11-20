@@ -2,7 +2,17 @@ import { useState } from 'react'
 import { PlateIcon } from './Icons'
 
 /** Image with a graceful placeholder when the URL is missing or broken. */
-export function FoodImage({ src, alt, className = '' }: { src: string | null; alt: string; className?: string }) {
+export function FoodImage({
+  src,
+  alt,
+  className = '',
+  eager = false,
+}: {
+  src: string | null
+  alt: string
+  className?: string
+  eager?: boolean
+}) {
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -23,7 +33,8 @@ export function FoodImage({ src, alt, className = '' }: { src: string | null; al
       className={`food-img ${loaded ? 'is-loaded' : ''} ${className}`}
       src={resolvedSrc}
       alt={alt}
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={eager ? 'high' : undefined}
       decoding="async"
       onLoad={() => setLoaded(true)}
       onError={() => setFailed(true)}
