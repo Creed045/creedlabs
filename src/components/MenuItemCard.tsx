@@ -50,9 +50,9 @@ export function MenuItemCard({
         ) : item.available && item.best_seller ? (
           <span className="dish__bestseller">House Favourite</span>
         ) : null}
-        {showCategory && <span className="dish__category-tag">{item.category}</span>}
       </div>
       <div className="dish__body">
+        {showCategory && <span className="dish__eyebrow">{item.category}</span>}
         <h3 className="dish__name">{item.name}</h3>
         <p className="dish__desc">{item.description}</p>
 
