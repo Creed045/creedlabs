@@ -7,12 +7,14 @@ export interface OperatingHoursState {
   openingTime: string
   closingTime: string
   hoursEnabled: boolean
+  signatureDishId?: string | null
 }
 
-const DEFAULT_HOURS: OperatingHoursState = {
+const DEFAULT_HOURS: Required<OperatingHoursState> = {
   openingTime: '08:00',
   closingTime: '23:00',
   hoursEnabled: true,
+  signatureDishId: null,
 }
 
 function normalizeTime(value: unknown, fallback: string): string {
@@ -23,7 +25,7 @@ function normalizeTime(value: unknown, fallback: string): string {
 }
 
 export function useRestaurantHours() {
-  const [hours, setHours] = useState<OperatingHoursState>(DEFAULT_HOURS)
+  const [hours, setHours] = useState<Required<OperatingHoursState>>(DEFAULT_HOURS)
   const [loading, setLoading] = useState(true)
   const [nowMinutes, setNowMinutes] = useState(() => businessMinutesOf())
 
@@ -32,7 +34,7 @@ export function useRestaurantHours() {
 
     supabase
       .from('restaurant_settings')
-      .select('opening_time, closing_time, hours_enabled')
+      .select('opening_time, closing_time, hours_enabled, signature_dish_id')
       .eq('id', 1)
       .maybeSingle()
       .then(({ data }) => {
@@ -42,6 +44,7 @@ export function useRestaurantHours() {
             openingTime: normalizeTime(data.opening_time, DEFAULT_HOURS.openingTime),
             closingTime: normalizeTime(data.closing_time, DEFAULT_HOURS.closingTime),
             hoursEnabled: typeof data.hours_enabled === 'boolean' ? data.hours_enabled : true,
+            signatureDishId: typeof data.signature_dish_id === 'string' ? data.signature_dish_id : null,
           })
         }
         setLoading(false)
@@ -53,12 +56,15 @@ export function useRestaurantHours() {
           opening_time?: string
           closing_time?: string
           hours_enabled?: boolean
+          signature_dish_id?: string | null
         } | undefined
         if (!row) return
         setHours((prev) => ({
           openingTime: normalizeTime(row.opening_time, prev.openingTime),
           closingTime: normalizeTime(row.closing_time, prev.closingTime),
           hoursEnabled: typeof row.hours_enabled === 'boolean' ? row.hours_enabled : prev.hoursEnabled,
+          signatureDishId:
+            'signature_dish_id' in row ? (row.signature_dish_id ?? null) : prev.signatureDishId,
         }))
       })
       .subscribe()
@@ -78,13 +84,30 @@ export function useRestaurantHours() {
   }, [])
 
   const saveOperatingHours = useCallback(async (next: OperatingHoursState): Promise<string | null> => {
-    setHours(next)
+    setHours((prev) => ({
+      openingTime: next.openingTime,
+      closingTime: next.closingTime,
+      hoursEnabled: next.hoursEnabled,
+      signatureDishId: next.signatureDishId !== undefined ? next.signatureDishId : prev.signatureDishId,
+    }))
     const { error } = await supabase
       .from('restaurant_settings')
       .update({
         opening_time: next.openingTime,
         closing_time: next.closingTime,
         hours_enabled: next.hoursEnabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 1)
+    return error ? error.message : null
+  }, [])
+
+  const saveSignatureDish = useCallback(async (dishId: string | null): Promise<string | null> => {
+    setHours((prev) => ({ ...prev, signatureDishId: dishId }))
+    const { error } = await supabase
+      .from('restaurant_settings')
+      .update({
+        signature_dish_id: dishId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', 1)
@@ -98,5 +121,6 @@ export function useRestaurantHours() {
     isOpen,
     loading,
     saveOperatingHours,
+    saveSignatureDish,
   }
 }

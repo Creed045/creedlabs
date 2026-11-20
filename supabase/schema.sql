@@ -568,6 +568,7 @@ create table if not exists public.restaurant_settings (
   opening_time        text not null default '08:00',
   closing_time        text not null default '23:00',
   hours_enabled       boolean not null default true,
+  signature_dish_id   uuid references public.menu_items(id) on delete set null,
   updated_at          timestamptz not null default now()
 );
 

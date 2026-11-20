@@ -4,6 +4,7 @@ import { CartBar } from '../components/CartBar'
 import { CategoryTabs } from '../components/CategoryTabs'
 import { EmptyState } from '../components/EmptyState'
 import { CloseIcon, PlusIcon, SearchIcon } from '../components/Icons'
+import { FoodImage } from '../components/FoodImage'
 import { MenuItemCard } from '../components/MenuItemCard'
 import { MenuSkeleton } from '../components/MenuSkeleton'
 import { useCart } from '../lib/cart'
@@ -29,7 +30,7 @@ function isVegDish(item: MenuItem): boolean {
 
 export function MenuPage() {
   const { items, loading, error, reload } = useMenu()
-  const { openingTime, closingTime, hoursEnabled, isOpen } = useRestaurantHours()
+  const { openingTime, closingTime, hoursEnabled, isOpen, signatureDishId } = useRestaurantHours()
   const { add, quantityOf } = useCart()
   const [active, setActive] = useState<MenuFilter>('best')
   const [query, setQuery] = useState('')
@@ -38,6 +39,9 @@ export function MenuPage() {
   const linkCtx = syncLinkContextFromUrl(pathname, search)
 
   const signatureDish = useMemo(() => {
+    const picked = signatureDishId ? items.find((i) => i.id === signatureDishId && i.available) : null
+    if (picked) return picked
+
     const courseRank: Record<string, number> = {
       Mains: 0,
       Starters: 1,
@@ -55,11 +59,11 @@ export function MenuPage() {
       available[0] ??
       null
     )
-  }, [items])
+  }, [items, signatureDishId])
 
   const counts = useMemo(() => {
     const c = {
-      best: items.filter((i) => i.best_seller).length,
+      best: items.filter((i) => i.best_seller || i.id === signatureDish?.id).length,
       all: items.length,
       ...Object.fromEntries(CATEGORIES.map((k) => [k, 0])),
     } as Record<MenuFilter, number>
@@ -67,7 +71,7 @@ export function MenuPage() {
       c[i.category] = (c[i.category] ?? 0) + 1
     })
     return c
-  }, [items])
+  }, [items, signatureDish])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -75,12 +79,12 @@ export function MenuPage() {
       q.length > 0
         ? items
         : active === 'best'
-          ? items.filter((i) => i.best_seller)
+          ? items.filter((i) => i.best_seller || i.id === signatureDish?.id)
           : active === 'all'
             ? items
             : items.filter((i) => i.category === active)
 
-    return base.filter((item) => {
+    const filtered = base.filter((item) => {
       if (q && !`${item.name} ${item.description} ${item.category}`.toLowerCase().includes(q)) {
         return false
       }
@@ -88,7 +92,17 @@ export function MenuPage() {
       if (tagFilter === 'veg' && !isVegDish(item)) return false
       return true
     })
-  }, [items, active, query, tagFilter])
+
+    // Promote the active Chef's Signature dish to the front when in Popular view
+    if (active === 'best' && signatureDish) {
+      return [...filtered].sort((a, b) => {
+        if (a.id === signatureDish.id) return -1
+        if (b.id === signatureDish.id) return 1
+        return Number(b.available) - Number(a.available)
+      })
+    }
+    return filtered
+  }, [items, active, query, tagFilter, signatureDish])
 
   const serviceLabel =
     linkCtx.mode === 'delivery'
@@ -129,22 +143,31 @@ export function MenuPage() {
 
           {signatureDish && (
             <aside className="hero__spotlight" aria-label="Chef's signature recommendation">
-              <div className="hero__spotlight-head">
-                <span className="hero__spotlight-tag">Tonight&apos;s Signature</span>
-                <span className="hero__spotlight-price">{formatPrice(signatureDish.price)}</span>
+              <div className="hero__spotlight-media">
+                <FoodImage
+                  src={signatureDish.image_url}
+                  alt={signatureDish.name}
+                  className="hero__spotlight-img"
+                />
               </div>
-              <strong className="hero__spotlight-name">{signatureDish.name}</strong>
-              <p className="hero__spotlight-desc">{signatureDish.description}</p>
-              <button
-                type="button"
-                className="btn btn--primary btn--sm hero__spotlight-btn"
-                onClick={() => add(signatureDish)}
-              >
-                <PlusIcon size={15} />
-                {quantityOf(signatureDish.id) > 0
-                  ? `In order (${quantityOf(signatureDish.id)}) · Add another`
-                  : 'Add to order'}
-              </button>
+              <div className="hero__spotlight-info">
+                <div className="hero__spotlight-head">
+                  <span className="hero__spotlight-tag">Tonight&apos;s Signature</span>
+                  <span className="hero__spotlight-price">{formatPrice(signatureDish.price)}</span>
+                </div>
+                <strong className="hero__spotlight-name">{signatureDish.name}</strong>
+                <p className="hero__spotlight-desc">{signatureDish.description}</p>
+                <button
+                  type="button"
+                  className="btn btn--primary btn--sm hero__spotlight-btn"
+                  onClick={() => add(signatureDish)}
+                >
+                  <PlusIcon size={15} />
+                  {quantityOf(signatureDish.id) > 0
+                    ? `In order (${quantityOf(signatureDish.id)}) · Add another`
+                    : 'Add to order'}
+                </button>
+              </div>
             </aside>
           )}
         </div>

@@ -160,7 +160,7 @@ export function MenuItemForm({ item, onClose, onSaved }: Props) {
             <label className="switch-row">
               <input type="checkbox" checked={bestSeller} onChange={(e) => setBestSeller(e.target.checked)} />
               <span className="switch" aria-hidden="true" />
-              <span>🔥 Best Seller</span>
+              <span>House Favourite</span>
             </label>
           </div>
 

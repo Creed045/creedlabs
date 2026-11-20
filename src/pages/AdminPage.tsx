@@ -407,8 +407,10 @@ function OrdersPanel({ onOpenPos }: { onOpenPos: () => void }) {
 
 function MenuPanel() {
   const { items, setItems, loading, error } = useMenu()
+  const { signatureDishId, saveSignatureDish } = useRestaurantHours()
   const [editing, setEditing] = useState<MenuItem | null | 'new'>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [highlightMsg, setHighlightMsg] = useState<string | null>(null)
 
   const toggleAvailable = async (item: MenuItem) => {
     setErr(null)
@@ -419,6 +421,29 @@ function MenuPanel() {
       setItems((prev) => prev.map((m) => (m.id === item.id ? { ...m, available: item.available } : m)))
       setErr(e.message)
     }
+  }
+
+  const toggleHouseFavourite = async (item: MenuItem) => {
+    setErr(null)
+    const next = !item.best_seller
+    setItems((prev) => prev.map((m) => (m.id === item.id ? { ...m, best_seller: next } : m)))
+    const { error: e } = await supabase.from('menu_items').update({ best_seller: next }).eq('id', item.id)
+    if (e) {
+      setItems((prev) => prev.map((m) => (m.id === item.id ? { ...m, best_seller: item.best_seller } : m)))
+      setErr(e.message)
+    }
+  }
+
+  const handleSetSignature = async (dishId: string | null) => {
+    setErr(null)
+    setHighlightMsg(null)
+    const e = await saveSignatureDish(dishId)
+    if (e) {
+      setErr(e)
+      return
+    }
+    setHighlightMsg(dishId ? 'Chef signature updated' : 'Using automatic signature')
+    setTimeout(() => setHighlightMsg(null), 2500)
   }
 
   const remove = async (item: MenuItem) => {
@@ -447,11 +472,39 @@ function MenuPanel() {
           <h2 className="panel-title">
             Menu Catalog <span className="muted">({items.length})</span>
           </h2>
-          <p className="muted small">Manage dishes, pricing, photos, and real-time kitchen availability.</p>
+          <p className="muted small">
+            Manage dishes, Chef&apos;s Signature spotlight, House Favourites, and live availability.
+          </p>
         </div>
         <button className="btn btn--primary" onClick={() => setEditing('new')}>
           <PlusIcon size={16} /> Add dish
         </button>
+      </div>
+
+      <div className="highlights-card card">
+        <div className="highlights-card__copy">
+          <span className="stat-card__label">Tonight&apos;s / Chef&apos;s Signature</span>
+          <p className="muted small">
+            Featured inside the hero banner (with photo) and promoted to the Chef&apos;s Signature lead card.
+          </p>
+        </div>
+        <div className="highlights-card__control">
+          <select
+            value={signatureDishId ?? ''}
+            onChange={(e) => handleSetSignature(e.target.value || null)}
+            aria-label="Select Tonight's Chef Signature dish"
+          >
+            <option value="">Auto (Highest-priority available dish)</option>
+            {items
+              .filter((m) => m.available)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({formatPrice(m.price)})
+                </option>
+              ))}
+          </select>
+          {highlightMsg && <span className="small text-ok">{highlightMsg}</span>}
+        </div>
       </div>
 
       {(error || err) && <p className="alert alert--error">{error ?? err}</p>}
@@ -472,32 +525,58 @@ function MenuPanel() {
             <div key={cat} className="admin-menu-group">
               <h3>{cat} <span>({list.length})</span></h3>
               <div className="admin-menu">
-                {list.map((item) => (
-                  <div key={item.id} className={`admin-item ${item.available ? '' : 'is-soldout'}`}>
-                    <FoodImage src={item.image_url} alt={item.name} className="admin-item__img" />
-                    <div className="admin-item__info">
-                      <div className="admin-item__title-row">
-                        <strong>{item.name}</strong>
-                        {item.best_seller && <span className="admin-item__tag">Popular</span>}
+                {list.map((item) => {
+                  const isSignature = signatureDishId === item.id
+                  return (
+                    <div key={item.id} className={`admin-item ${item.available ? '' : 'is-soldout'}`}>
+                      <FoodImage src={item.image_url} alt={item.name} className="admin-item__img" />
+                      <div className="admin-item__info">
+                        <div className="admin-item__title-row">
+                          <strong>{item.name}</strong>
+                          {isSignature && <span className="admin-item__tag admin-item__tag--signature">Chef&apos;s Signature</span>}
+                          {item.best_seller && <span className="admin-item__tag admin-item__tag--fav">House Favourite</span>}
+                        </div>
+                        <span className="muted small admin-item__desc">{item.description}</span>
                       </div>
-                      <span className="muted small admin-item__desc">{item.description}</span>
+                      <div className="admin-item__price">{formatPrice(item.price)}</div>
+                      <div className="admin-item__toggles">
+                        <label className="switch-row switch-row--compact" title="Toggle stock availability">
+                          <input type="checkbox" checked={item.available} onChange={() => toggleAvailable(item)} />
+                          <span className="switch" aria-hidden="true" />
+                          <span className={item.available ? 'text-ok' : 'text-bad'}>
+                            {item.available ? 'In stock' : 'Sold out'}
+                          </span>
+                        </label>
+                        <label className="switch-row switch-row--compact" title="Feature in Popular / House Favourites">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(item.best_seller)}
+                            onChange={() => toggleHouseFavourite(item)}
+                          />
+                          <span className="switch" aria-hidden="true" />
+                          <span className={item.best_seller ? '' : 'muted'}>Favourite</span>
+                        </label>
+                      </div>
+                      <div className="admin-item__actions">
+                        <button
+                          type="button"
+                          className={`btn btn--sm ${isSignature ? 'btn--primary' : 'btn--ghost'}`}
+                          disabled={!item.available}
+                          onClick={() => handleSetSignature(isSignature ? null : item.id)}
+                          title={isSignature ? 'Clear explicit signature override' : "Set as Tonight's Chef Signature"}
+                        >
+                          {isSignature ? 'Signature' : 'Set sig'}
+                        </button>
+                        <button className="btn btn--ghost btn--sm" onClick={() => setEditing(item)}>
+                          Edit
+                        </button>
+                        <button className="btn btn--danger btn--sm" onClick={() => remove(item)}>
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="admin-item__price">{formatPrice(item.price)}</div>
-                    <label className="switch-row switch-row--compact" title="Toggle availability">
-                      <input type="checkbox" checked={item.available} onChange={() => toggleAvailable(item)} />
-                      <span className="switch" aria-hidden="true" />
-                      <span className={item.available ? 'text-ok' : 'text-bad'}>{item.available ? 'In stock' : 'Sold out'}</span>
-                    </label>
-                    <div className="admin-item__actions">
-                      <button className="btn btn--ghost btn--sm" onClick={() => setEditing(item)}>
-                        Edit
-                      </button>
-                      <button className="btn btn--danger btn--sm" onClick={() => remove(item)}>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )
