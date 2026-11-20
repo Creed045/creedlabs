@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { makeSquadReference } from './squad'
-import { supabase } from './supabase'
+import { realtimeChannel, supabase } from './supabase'
 import type { CartLine, Order, OrderStatus, PaymentMethod } from './types'
 
 export interface CustomerDetails {
@@ -140,8 +140,7 @@ export function useLiveOrders(options: {
       setLoading(false)
     })
 
-    const channel = supabase
-      .channel(`orders-live-${statusKey || 'all'}`)
+    const channel = realtimeChannel(`orders-live-${statusKey || 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const order = payload.new as Order

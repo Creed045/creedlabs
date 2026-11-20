@@ -528,9 +528,11 @@ a {
 .theme-toggle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-width: 36px;
   height: 36px;
-  padding: 0 12px;
+  padding: 0 9px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -549,6 +551,9 @@ a {
 }
 
 @media (min-width: 540px) {
+  .theme-toggle {
+    padding: 0 12px;
+  }
   .theme-toggle__label {
     display: inline;
   }

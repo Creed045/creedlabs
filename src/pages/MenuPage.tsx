@@ -37,14 +37,25 @@ export function MenuPage() {
   const { pathname, search } = useLocation()
   const linkCtx = syncLinkContextFromUrl(pathname, search)
 
-  const signatureDish = useMemo(
-    () =>
-      items.find((i) => i.available && /jollof/i.test(i.name)) ??
-      items.find((i) => i.available && i.best_seller) ??
-      items.find((i) => i.available) ??
-      null,
-    [items],
-  )
+  const signatureDish = useMemo(() => {
+    const courseRank: Record<string, number> = {
+      Mains: 0,
+      Starters: 1,
+      Proteins: 2,
+      Drinks: 3,
+      Desserts: 4,
+    }
+    const available = items.filter((i) => i.available && i.price >= 500)
+    return (
+      available.find((i) => /jollof/i.test(i.name)) ??
+      available.find((i) => /suya|asun|egusi/i.test(i.name) && i.best_seller) ??
+      [...available]
+        .filter((i) => i.best_seller)
+        .sort((a, b) => (courseRank[a.category] ?? 9) - (courseRank[b.category] ?? 9))[0] ??
+      available[0] ??
+      null
+    )
+  }, [items])
 
   const counts = useMemo(() => {
     const c = {

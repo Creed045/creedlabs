@@ -2,7 +2,7 @@
 // summarises it like an end-of-day Z-report.
 import { useEffect, useState } from 'react'
 import { businessHourOf, dayStart, formatClock, shiftDayKey } from './businessDay'
-import { supabase } from './supabase'
+import { realtimeChannel, supabase } from './supabase'
 import { isTableOrder, ORDER_STATUSES, shortOrderId, type Order } from './types'
 
 export type Tender = 'squad-paid' | 'squad-pending' | 'squad-failed' | 'cash-settled' | 'cash-open'
@@ -134,8 +134,7 @@ export function useDayOrders(dayKey: string, live: boolean) {
       active = false
     }
 
-    const channel = supabase
-      .channel(`pos-day-${dayKey}`)
+    const channel = realtimeChannel(`pos-day-${dayKey}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         clearTimeout(debounce)
         debounce = setTimeout(fetchDay, 350)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase } from './supabase'
+import { realtimeChannel, supabase } from './supabase'
 
 export interface WaiterCall {
   id: string
@@ -11,10 +11,10 @@ export interface WaiterCall {
 }
 
 export const WAITER_REASONS = [
-  '💳 Need POS machine to pay',
-  '🧾 Request bill at table',
-  '💧 Water / napkins / cutlery',
-  '🙋 Need waiter assistance',
+  'Need POS terminal at table',
+  'Request the bill',
+  'Water, napkins or cutlery',
+  'Server assistance',
 ] as const
 
 function safeUuid(): string {
@@ -49,8 +49,7 @@ export function useCallWaiterSetting() {
         setLoading(false)
       })
 
-    const channel = supabase
-      .channel('restaurant-settings-live')
+    const channel = realtimeChannel('restaurant-settings-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, (payload) => {
         const row = payload.new as { call_waiter_enabled?: boolean } | undefined
         if (row && typeof row.call_waiter_enabled === 'boolean') {
@@ -126,8 +125,7 @@ export function useLiveWaiterCalls(onNewCall?: (call: WaiterCall) => void) {
         if (active && data) setCalls(data as WaiterCall[])
       })
 
-    const channel = supabase
-      .channel('waiter-calls-live')
+    const channel = realtimeChannel('waiter-calls-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'waiter_calls' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const c = payload.new as WaiterCall

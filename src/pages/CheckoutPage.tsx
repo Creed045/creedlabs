@@ -11,7 +11,7 @@ import { formatTableLabel, saveLinkContext, syncLinkContextFromUrl } from '../li
 import { useRestaurantHours } from '../lib/restaurantHours'
 import { placeOrder, verifyPayment, type CustomerDetails } from '../lib/orders'
 import { isSquadConfigured, makeSquadReference, payWithSquad } from '../lib/squad'
-import { supabase } from '../lib/supabase'
+import { realtimeChannel, supabase } from '../lib/supabase'
 import {
   isTableOrder,
   shortOrderId,
@@ -1002,11 +1002,13 @@ function OrderSummary({
   onQty: (id: string, q: number) => void
   onAddMore: () => void
 }) {
+  const itemCount = lines.reduce((n, l) => n + l.quantity, 0)
   return (
     <details className="summary" open>
       <summary>
         <span>
-          {lines.length} {lines.length === 1 ? 'dish' : 'different dishes'} ({lines.reduce((n, l) => n + l.quantity, 0)} items)
+          {lines.length} {lines.length === 1 ? 'dish' : 'different dishes'} ({itemCount}{' '}
+          {itemCount === 1 ? 'item' : 'items'})
         </span>
         <strong>{formatPrice(total)}</strong>
       </summary>
@@ -1053,8 +1055,7 @@ function LiveOrderTracker({ orderId, onPaid }: { orderId: string; onPaid?: () =>
         if (data.payment_status === 'paid') onPaid?.()
       })
 
-    const channel = supabase
-      .channel(`order-track-${orderId}`)
+    const channel = realtimeChannel(`order-track-${orderId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'order_tracking', filter: `id=eq.${orderId}` },

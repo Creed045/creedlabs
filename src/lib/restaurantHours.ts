@@ -1,7 +1,7 @@
 // Live-synced restaurant opening and closing hours backed by public.restaurant_settings (id = 1).
 import { useCallback, useEffect, useState } from 'react'
 import { businessMinutesOf, isWithinOperatingHours } from './businessDay'
-import { supabase } from './supabase'
+import { realtimeChannel, supabase } from './supabase'
 
 export interface OperatingHoursState {
   openingTime: string
@@ -47,8 +47,7 @@ export function useRestaurantHours() {
         setLoading(false)
       })
 
-    const channel = supabase
-      .channel('restaurant-hours-live')
+    const channel = realtimeChannel('restaurant-hours-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, (payload) => {
         const row = payload.new as {
           opening_time?: string

@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from './supabase'
+import { CATEGORIES } from './config'
+import { realtimeChannel, supabase } from './supabase'
 import type { MenuItem } from './types'
+
+const CATEGORY_ORDER = new Map<string, number>(CATEGORIES.map((c, idx) => [c, idx]))
 
 async function queryMenu() {
   return supabase
     .from('menu_items')
     .select('*')
-    .order('category')
     .order('created_at', { ascending: true })
 }
 
 function normalizeMenu(rows: unknown[] | null): MenuItem[] {
-  return ((rows ?? []) as MenuItem[]).map((m) => ({
-    ...m,
-    price: Number(m.price),
-    best_seller: Boolean(m.best_seller),
-  }))
+  return ((rows ?? []) as MenuItem[])
+    .map((m) => ({
+      ...m,
+      price: Number(m.price),
+      best_seller: Boolean(m.best_seller),
+    }))
+    .sort((a, b) => {
+      const catDiff = (CATEGORY_ORDER.get(a.category) ?? 99) - (CATEGORY_ORDER.get(b.category) ?? 99)
+      if (catDiff !== 0) return catDiff
+      return Number(b.available) - Number(a.available)
+    })
 }
 
 export function useMenu() {
@@ -49,8 +57,7 @@ export function useMenu() {
     })
 
     // Live updates when kitchen or admin toggles food availability
-    const channel = supabase
-      .channel('menu-items-live')
+    const channel = realtimeChannel('menu-items-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
         queryMenu().then(({ data, error: err }) => {
           if (!active || err) return

@@ -13,3 +13,11 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: true, autoRefreshToken: true },
 })
+
+let channelSeq = 0
+
+/** Creates a unique Realtime channel instance per hook mount so concurrent mounts never collide. */
+export function realtimeChannel(prefix: string) {
+  channelSeq += 1
+  return supabase.channel(`${prefix}-${channelSeq}`)
+}

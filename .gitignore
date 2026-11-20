@@ -33,4 +33,5 @@ all-my-skills/
 .claude/
 graphify-out/
 .graphifyignore
+.playwright-cli/
 CLAUDE.md

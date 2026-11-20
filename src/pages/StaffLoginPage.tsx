@@ -56,7 +56,7 @@ export function StaffLoginPage() {
             <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           {error && <p className="alert alert--error">{error}</p>}
-          <button className="btn btn--primary btn--lg btn--block" disabled={busy}>
+          <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={busy}>
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
