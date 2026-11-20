@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { CartBar } from '../components/CartBar'
 import { CategoryTabs } from '../components/CategoryTabs'
 import { EmptyState } from '../components/EmptyState'
@@ -113,9 +113,18 @@ export function MenuPage() {
 
   const showEditorialLead = active === 'best' && !query.trim() && tagFilter === 'all' && visible.length >= 3
 
+  const sectionHeading = query.trim()
+    ? `Matches for “${query.trim()}”`
+    : active === 'best'
+      ? "Tonight's Signatures"
+      : active === 'all'
+        ? 'Full Kitchen Menu'
+        : active
+
   return (
-    <main className="menu-page">
-      <section className="hero">
+    <div id="top" className="menu-page">
+      <main>
+        <section className="hero">
         <div className="container hero__inner">
           <div className="hero__content">
             <div className="hero__meta">
@@ -180,6 +189,15 @@ export function MenuPage() {
       </div>
 
       <section className="container menu-section">
+        <div className="menu-section__head">
+          <h2 className="menu-section__title">{sectionHeading}</h2>
+          {!loading && isSupabaseConfigured && (
+            <span className="menu-section__count">
+              {visible.length} {visible.length === 1 ? 'dish' : 'dishes'}
+            </span>
+          )}
+        </div>
+
         {hoursEnabled && !isOpen && (
           <div className="alert alert--warn closed-banner" role="status">
             <strong>Kitchen is currently closed.</strong> Ordering reopens at {formatTime12h(openingTime)} WAT
@@ -284,8 +302,28 @@ export function MenuPage() {
           </div>
         )}
       </section>
+      </main>
+
+      <footer className="container menu-footer">
+        <div className="menu-footer__meta">
+          <span className="menu-footer__brand">{RESTAURANT_NAME}</span>
+          <span className="menu-footer__sep" aria-hidden="true">·</span>
+          <span>
+            {hoursEnabled
+              ? `Open daily · ${formatTime12h(openingTime)} – ${formatTime12h(closingTime)} WAT`
+              : 'Prepared fresh to order'}
+          </span>
+          <span className="menu-footer__sep" aria-hidden="true">·</span>
+          <span>Dine-in table QR &amp; Lagos dispatch</span>
+        </div>
+        <nav className="menu-footer__links" aria-label="Footer navigation">
+          <a href="#top">Back to top</a>
+          <Link to="/kitchen">Kitchen display</Link>
+          <Link to="/admin">Back office</Link>
+        </nav>
+      </footer>
 
       <CartBar />
-    </main>
+    </div>
   )
 }

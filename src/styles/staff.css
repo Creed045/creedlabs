@@ -490,7 +490,7 @@
 .order-card__notes {
   padding: 7px 10px;
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
   background: var(--warn-soft);
   color: var(--ink-2);
   font-size: 0.82rem;
@@ -877,18 +877,24 @@
   box-shadow: var(--shadow-sm);
 }
 
-.board__col--new .ticket { border-top: 3px solid #2563eb; }
-.board__col--preparing .ticket { border-top: 3px solid #d97706; }
-.board__col--ready .ticket { border-top: 3px solid #15803d; }
+.board__col--new .ticket {
+  border-color: color-mix(in srgb, #2563eb 28%, var(--line));
+}
+.board__col--preparing .ticket {
+  border-color: color-mix(in srgb, #d97706 32%, var(--line));
+}
+.board__col--ready .ticket {
+  border-color: color-mix(in srgb, #15803d 32%, var(--line));
+}
 
 .ticket--failed-payment {
-  border-color: var(--bad) !important;
-  border-top: 3px solid var(--bad) !important;
+  border: 1.5px solid var(--bad) !important;
+  background: color-mix(in srgb, var(--bad) 5%, var(--surface));
 }
 
 .ticket--pending-payment {
-  border-color: #d97706 !important;
-  border-top: 3px solid #d97706 !important;
+  border: 1.5px solid #d97706 !important;
+  background: color-mix(in srgb, #d97706 5%, var(--surface));
 }
 
 .ticket__head {
@@ -1017,7 +1023,7 @@
 .ticket__notes {
   padding: 7px 10px;
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
   background: var(--warn-soft);
   color: var(--ink-2);
   font-size: 0.8rem;
